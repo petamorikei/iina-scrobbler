@@ -17,7 +17,7 @@ files, music videos, and online videos played through yt-dlp (YouTube and others
 
 ## Requirements
 
-- IINA 1.5 or later (developed and tested with IINA 1.5.1 on macOS)
+- [IINA](https://iina.io/) 1.4 or later (tested with IINA 1.5.1)
 - For online videos: IINA's **Online Media** plugin (the default way IINA plays URLs through yt-dlp). A newer yt-dlp
   installed with Homebrew is used automatically when present.
 
