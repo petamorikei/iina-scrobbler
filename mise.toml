@@ -63,18 +63,31 @@ description = "Remove the development plugin link from IINA"
 run = '"$IINA_APP/Contents/MacOS/iina-plugin" unlink .'
 
 [tasks.pack]
-description = "Build and package the plugin as an .iinaplgz in out/"
+description = "Build and package the plugin as out/Scrobbler-<version>.iinaplgz"
 depends = ["build"]
+# An .iinaplgz is a plain zip with Info.json at its root (IINA unzips it into the
+# plugins folder), so zip is used instead of IINA's iina-plugin CLI: the same task
+# then runs on the Linux release runner.
 run = '''
 set -euo pipefail
+version=$(node -p 'require("./Info.json").version')
 rm -rf out/stage
 rm -f out/*.iinaplgz
-mkdir -p out/stage/Scrobbler
-cp Info.json out/stage/Scrobbler/
-cp -R dist out/stage/Scrobbler/
-for f in pref.html LICENSE README.md; do [ -e "$f" ] && cp "$f" out/stage/Scrobbler/; done
-# iina-plugin writes <name>-<version>.iinaplgz into the current directory.
-(cd out && "$IINA_APP/Contents/MacOS/iina-plugin" pack stage/Scrobbler)
+mkdir -p out/stage
+cp -R Info.json dist pref.html LICENSE README.md THIRD_PARTY_NOTICES.md out/stage/
+(cd out/stage && zip -qrX "../Scrobbler-${version}.iinaplgz" .)
 rm -rf out/stage
 ls -l out/*.iinaplgz
+'''
+
+[tasks."release:verify"]
+description = "Check that package.json, Info.json and the release tag agree on the version"
+run = '''
+set -euo pipefail
+pkg=$(node -p 'require("./package.json").version')
+info=$(node -p 'require("./Info.json").version')
+[ "$pkg" = "$info" ] || { echo "package.json ($pkg) and Info.json ($info) versions differ"; exit 1; }
+tag="${GITHUB_REF_NAME:-v$info}"
+[ "$tag" = "v$info" ] || { echo "tag $tag does not match version $info"; exit 1; }
+echo "version $info (ghVersion $(node -p 'require("./Info.json").ghVersion'))"
 '''

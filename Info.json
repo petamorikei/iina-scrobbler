@@ -7,6 +7,8 @@
     "name": "petamorikei",
     "url": "https://github.com/petamorikei"
   },
+  "ghRepo": "petamorikei/iina-scrobbler",
+  "ghVersion": 1,
   "entry": "dist/main.js",
   "globalEntry": "dist/global.js",
   "permissions": ["network-request", "show-osd", "file-system"],

@@ -1,0 +1,31 @@
+name: Release
+
+# Push a tag like v0.1.0 (matching Info.json "version") to publish a release.
+# IINA's "Install from GitHub" and its update check use the .iinaplgz attached to the
+# latest release, and compare "ghVersion" in Info.json on main.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: jdx/mise-action@v3
+      - name: Check versions
+        run: mise run release:verify
+      - name: Lint, type-check, test
+        run: mise run check
+      - name: Build and package
+        env:
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_API_SECRET: ${{ secrets.LASTFM_API_SECRET }}
+        run: mise run pack
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" out/*.iinaplgz --title "$GITHUB_REF_NAME" --generate-notes
