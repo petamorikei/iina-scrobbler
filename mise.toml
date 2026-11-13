@@ -63,19 +63,21 @@ description = "Remove the development plugin link from IINA"
 run = '"$IINA_APP/Contents/MacOS/iina-plugin" unlink .'
 
 [tasks.pack]
-description = "Build and package the plugin as out/Scrobbler-<version>.iinaplgz"
+description = "Build and package the plugin as out/iina-scrobbler-<version>.iinaplgz"
 depends = ["build"]
 # An .iinaplgz is a plain zip with Info.json at its root (IINA unzips it into the
 # plugins folder), so zip is used instead of IINA's iina-plugin CLI: the same task
-# then runs on the Linux release runner.
+# then runs on the Linux release runner. The file is named after the repository
+# (package.json "name"), not the display name, so renaming the plugin keeps it stable.
 run = '''
 set -euo pipefail
+name=$(node -p 'require("./package.json").name')
 version=$(node -p 'require("./Info.json").version')
 rm -rf out/stage
 rm -f out/*.iinaplgz
 mkdir -p out/stage
 cp -R Info.json dist pref.html LICENSE README.md THIRD_PARTY_NOTICES.md out/stage/
-(cd out/stage && zip -qrX "../Scrobbler-${version}.iinaplgz" .)
+(cd out/stage && zip -qrX "../${name}-${version}.iinaplgz" .)
 rm -rf out/stage
 ls -l out/*.iinaplgz
 '''

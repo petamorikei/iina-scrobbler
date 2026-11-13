@@ -27,7 +27,7 @@ Either:
 
 - In **IINA › Settings › Plugins**, install from GitHub and enter `petamorikei/iina-scrobbler`. IINA installs the
   package from the latest release and can check for updates later; or
-- download `Scrobbler-<version>.iinaplgz` from the
+- download `iina-scrobbler-<version>.iinaplgz` from the
   [latest release](https://github.com/petamorikei/iina-scrobbler/releases/latest) and open it.
 
 Then:
@@ -86,7 +86,7 @@ cp .env.example .env         # then fill in your Last.fm API account (https://ww
 mise run build               # dist/main.js and dist/global.js
 mise run link                # load this folder into IINA as a development plugin
 mise run check               # Biome, type-check, unit tests (Vitest)
-mise run pack                # out/Scrobbler-<version>.iinaplgz
+mise run pack                # out/iina-scrobbler-<version>.iinaplgz
 ```
 
 - `mise run build:nosecrets` builds without Last.fm credentials (connecting is then disabled).
