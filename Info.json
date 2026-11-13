@@ -1,0 +1,25 @@
+{
+  "name": "Scrobbler",
+  "identifier": "io.github.petamorikei.iina-scrobbler",
+  "version": "0.1.0",
+  "description": "Scrobble what you play in IINA to Last.fm",
+  "author": {
+    "name": "petamorikei",
+    "url": "https://github.com/petamorikei"
+  },
+  "entry": "dist/main.js",
+  "globalEntry": "dist/global.js",
+  "permissions": ["network-request", "show-osd", "file-system"],
+  "allowedDomains": ["ws.audioscrobbler.com"],
+  "preferenceDefaults": {
+    "session_key": "",
+    "session_name": "",
+    "scrobble_local": true,
+    "scrobble_ytdlp": true,
+    "scrobble_network": true,
+    "ytdlp_metadata": true,
+    "ytdlp_path": "",
+    "show_osd": true,
+    "debug_log": false
+  }
+}

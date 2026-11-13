@@ -1,0 +1,10 @@
+{
+  // Unit tests: run on Node (type stripping). They may import only the pure modules
+  // under src/ that do not touch the iina global; iina-plugin-definition is not loaded
+  // here because its global setTimeout etc. clash with @types/node.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["test/**/*.ts", "src/types/build-env.d.ts"]
+}

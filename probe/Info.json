@@ -1,0 +1,20 @@
+{
+  "name": "Scrobbler Probe",
+  "identifier": "io.github.iina-scrobbler.probe",
+  "version": "0.0.1",
+  "description": "Diagnostic plugin for iina-scrobbler: logs playback events, metadata, HTTP behavior and yt-dlp availability to @data.",
+  "author": {
+    "name": "iina-scrobbler"
+  },
+  "entry": "main.js",
+  "globalEntry": "global.js",
+  "preferencesPage": "pref.html",
+  "preferenceDefaults": {
+    "api_key": "",
+    "api_secret": "",
+    "session_key": "",
+    "session_name": ""
+  },
+  "permissions": ["network-request", "show-osd", "file-system"],
+  "allowedDomains": ["ws.audioscrobbler.com"]
+}

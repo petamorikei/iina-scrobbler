@@ -1,0 +1,68 @@
+[tools]
+node = "26"
+pnpm = "12"
+
+[env]
+IINA_APP = "/Applications/IINA.app"
+# Last.fm credentials (LASTFM_API_KEY, LASTFM_API_SECRET) for `mise run build`.
+# .env is git-ignored; see .env.example.
+_.file = { path = ".env", redact = true }
+
+[tasks.install]
+description = "Install dev dependencies"
+run = "pnpm install"
+sources = ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml"]
+outputs = ["node_modules/.modules.yaml"]
+
+[tasks.build]
+description = "Bundle the plugin into dist/ (needs Last.fm credentials in .env)"
+depends = ["install"]
+run = "node build.mjs"
+
+[tasks."build:nosecrets"]
+description = "Bundle the plugin without Last.fm credentials (auth disabled)"
+depends = ["install"]
+run = "node build.mjs --allow-missing-secrets"
+
+[tasks.watch]
+description = "Rebuild dist/ on change"
+depends = ["install"]
+run = "node build.mjs --watch"
+
+[tasks.typecheck]
+description = "Type-check plugin code and tests"
+depends = ["install"]
+run = ["pnpm exec tsc -p tsconfig.json", "pnpm exec tsc -p tsconfig.test.json"]
+
+[tasks.test]
+description = "Run unit tests on Node"
+run = "node --test 'test/**/*.test.ts'"
+
+[tasks.check]
+description = "Type-check and run unit tests"
+depends = ["typecheck", "test"]
+
+[tasks.link]
+description = "Link this folder into IINA as a development plugin"
+run = '"$IINA_APP/Contents/MacOS/iina-plugin" link .'
+
+[tasks.unlink]
+description = "Remove the development plugin link from IINA"
+run = '"$IINA_APP/Contents/MacOS/iina-plugin" unlink .'
+
+[tasks.pack]
+description = "Build and package the plugin as an .iinaplgz in out/"
+depends = ["build"]
+run = '''
+set -euo pipefail
+rm -rf out/stage
+rm -f out/*.iinaplgz
+mkdir -p out/stage/Scrobbler
+cp Info.json out/stage/Scrobbler/
+cp -R dist out/stage/Scrobbler/
+for f in pref.html LICENSE README.md; do [ -e "$f" ] && cp "$f" out/stage/Scrobbler/; done
+# iina-plugin writes <name>-<version>.iinaplgz into the current directory.
+(cd out && "$IINA_APP/Contents/MacOS/iina-plugin" pack stage/Scrobbler)
+rm -rf out/stage
+ls -l out/*.iinaplgz
+'''

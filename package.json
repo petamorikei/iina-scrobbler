@@ -1,0 +1,26 @@
+{
+  "name": "iina-scrobbler",
+  "version": "0.1.0",
+  "private": true,
+  "description": "IINA plugin that scrobbles what you play to Last.fm",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=23.6",
+    "pnpm": ">=12"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "build:nosecrets": "node build.mjs --allow-missing-secrets",
+    "watch": "node build.mjs --watch",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "check": "pnpm run typecheck && pnpm test"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.25.0",
+    "iina-plugin-definition": "^0.99.5",
+    "typescript": "^5.9.0"
+  }
+}

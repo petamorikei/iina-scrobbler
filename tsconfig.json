@@ -1,0 +1,8 @@
+{
+  // Plugin code: runs in IINA's JavaScriptCore. IINA globals, no Node or DOM.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["iina-plugin-definition"]
+  },
+  "include": ["src/**/*.ts"]
+}
