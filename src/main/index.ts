@@ -115,8 +115,10 @@ function tick(): void {
         post("scrobble", { entry: { ...a.track, timestamp: a.timestamp }, source: s.source });
         log.info(`scrobble: ${a.track.artist} - ${a.track.track}`);
         // The global entry does the actual send and cannot reply (research.md §8.1), so
-        // this only reflects that the track qualified while connected.
+        // this only reflects whether the track qualified while connected. Not connected
+        // (never, or the session was revoked): the scrobble waits in the queue.
         if (getString(PrefKey.SessionKey)) osd(`Scrobbled: ${a.track.artist} - ${a.track.track}`);
+        else osd("Scrobble saved. Connect to Last.fm from the Plugin menu to send it.");
         break;
       case "skip":
         log.info(`not scrobbled (${a.reason})`);

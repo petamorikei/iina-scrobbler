@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Scrobbler</title>
+    <!--
+      IINA injects its own base styles (.pref-section, .pref-help, .secondary, dark mode)
+      and binds every <input data-pref-key> to the plugin preferences: checkboxes save
+      on click, text fields when they lose focus. The page can only call
+      iina.preferences.get/set; it cannot talk to the plugin (research.md §1.5), so
+      connecting to Last.fm is done from the Plugin menu.
+    -->
+    <style>
+      h2 {
+        font-size: 13px;
+        font-weight: 600;
+        margin: 0 0 6px;
+      }
+      .rows {
+        line-height: 22px;
+      }
+      .status {
+        margin-top: 2px;
+      }
+      .status strong {
+        font-weight: 600;
+      }
+      input[type="text"] {
+        width: 100%;
+        max-width: 360px;
+        margin-top: 4px;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11px;
+      }
+      hr {
+        border: none;
+        border-top: 1px solid rgba(128, 128, 128, 0.3);
+        margin: 14px 0;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="pref-section">
+      <h2>Last.fm</h2>
+      <p class="status" id="status">…</p>
+      <p class="pref-help secondary small" id="status-help"></p>
+    </div>
+
+    <hr />
+
+    <div class="pref-section">
+      <h2>What to scrobble</h2>
+      <div class="rows">
+        <div><label><input type="checkbox" data-pref-key="scrobble_local" /> Local files</label></div>
+        <div>
+          <label><input type="checkbox" data-pref-key="scrobble_ytdlp" /> Online videos played through yt-dlp (YouTube etc.)</label>
+        </div>
+        <div>
+          <label><input type="checkbox" data-pref-key="scrobble_network" /> Other network media (direct URLs to audio/video files)</label>
+        </div>
+      </div>
+      <p class="pref-help secondary small">
+        Videos from local files are scrobbled only when they have artist and title tags. Internet radio and live
+        streams are never scrobbled. Changes apply from the next file.
+      </p>
+    </div>
+
+    <div class="pref-section">
+      <h2>yt-dlp</h2>
+      <div class="rows">
+        <div>
+          <label><input type="checkbox" data-pref-key="ytdlp_metadata" /> Run yt-dlp to read artist, track and album</label>
+        </div>
+      </div>
+      <p class="pref-help secondary small">
+        Online Media only passes the video title to the player. With this on, the plugin asks yt-dlp for the music
+        metadata (about 2 seconds per video). With it off, only the video title is used.
+      </p>
+      <div style="margin-top: 8px">
+        <label for="ytdlp_path">yt-dlp path</label>
+        <input type="text" id="ytdlp_path" data-pref-key="ytdlp_path" placeholder="Automatic" />
+        <p class="pref-help secondary small">
+          Leave empty to use <code>/opt/homebrew/bin/yt-dlp</code>, <code>/usr/local/bin/yt-dlp</code> or the copy
+          bundled with IINA, in that order.
+        </p>
+      </div>
+    </div>
+
+    <hr />
+
+    <div class="pref-section">
+      <h2>Other</h2>
+      <div class="rows">
+        <div><label><input type="checkbox" data-pref-key="show_osd" /> Show a message on screen when a track is scrobbled</label></div>
+        <div><label><input type="checkbox" data-pref-key="debug_log" /> Write a debug log</label></div>
+      </div>
+      <p class="pref-help secondary small">
+        The debug log is written to the plugin's data folder
+        (<code>~/Library/Application Support/com.colliderli.iina/plugins/.data/</code>) and helps when reporting a
+        problem. It never contains your Last.fm session key.
+      </p>
+    </div>
+
+    <script>
+      // Connection status. Refreshed while the page is open, because connecting happens
+      // from the Plugin menu while this page may be visible.
+      (function () {
+        var statusEl = document.getElementById("status");
+        var helpEl = document.getElementById("status-help");
+        function render(name) {
+          statusEl.textContent = "";
+          if (typeof name === "string" && name !== "") {
+            statusEl.appendChild(document.createTextNode("Connected as "));
+            var strong = document.createElement("strong");
+            strong.textContent = name;
+            statusEl.appendChild(strong);
+            helpEl.textContent = "To disconnect, choose Plugin › Disconnect from Last.fm.";
+          } else {
+            statusEl.textContent = "Not connected";
+            helpEl.textContent =
+              "Choose Plugin › Connect to Last.fm… and allow access in your browser. Scrobbles made before connecting are kept and sent afterwards.";
+          }
+        }
+        function refresh() {
+          window.iina.preferences.get("session_name", render);
+        }
+        refresh();
+        setInterval(refresh, 2000);
+      })();
+    </script>
+  </body>
+</html>

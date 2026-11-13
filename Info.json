@@ -11,6 +11,7 @@
   "globalEntry": "dist/global.js",
   "permissions": ["network-request", "show-osd", "file-system"],
   "allowedDomains": ["ws.audioscrobbler.com"],
+  "preferencesPage": "pref.html",
   "preferenceDefaults": {
     "session_key": "",
     "session_name": "",
