@@ -14,13 +14,17 @@
     "build:nosecrets": "node build.mjs --allow-missing-secrets",
     "watch": "node build.mjs --watch",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
-    "test": "node --test \"test/**/*.test.ts\"",
-    "check": "pnpm run typecheck && pnpm test"
+    "test": "vitest",
+    "check": "biome check --write .",
+    "prepare": "mise exec -- prek install",
+    "preinstall": "npx only-allow pnpm"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
-    "esbuild": "^0.25.0",
+    "@biomejs/biome": "2.6.7",
+    "@types/node": "^26.6.6",
+    "esbuild": "^0.28.0",
     "iina-plugin-definition": "^0.99.5",
-    "typescript": "^5.9.0"
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
   }
 }

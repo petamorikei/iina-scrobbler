@@ -58,8 +58,14 @@ function onFileLoaded(): void {
   });
 
   // Turning a source off also skips running yt-dlp (design §3.2).
-  if (!getBool(SOURCE_PREF[source], true)) return log.info(`${source}: scrobbling turned off for this source`);
-  if (radio) return log.info(`${source}: internet radio is not scrobbled`);
+  if (!getBool(SOURCE_PREF[source], true)) {
+    log.info(`${source}: scrobbling turned off for this source`);
+    return;
+  }
+  if (radio) {
+    log.info(`${source}: internet radio is not scrobbled`);
+    return;
+  }
 
   const input: MetadataInput = {
     source,
@@ -78,12 +84,15 @@ function onFileLoaded(): void {
   const finish = (inp: MetadataInput) => {
     if (seq !== file.seq) return; // another file was loaded meanwhile
     const result = buildTrack(inp);
-    if (!result.ok) return log.info(`${source}: not scrobbled (${result.reason})`);
-    startSession(result.track, source, result.from);
+    if (result.ok) startSession(result.track, source, result.from);
+    else log.info(`${source}: not scrobbled (${result.reason})`);
   };
 
   const needsYtdlp = source === "ytdlp" && !(input.tags.artist && input.tags.title);
-  if (!needsYtdlp || !getBool(PrefKey.YtdlpMetadata, true)) return finish(input);
+  if (!needsYtdlp || !getBool(PrefKey.YtdlpMetadata, true)) {
+    finish(input);
+    return;
+  }
 
   fetchYtdlpInfo(path)
     .then((r) => {

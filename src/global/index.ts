@@ -136,7 +136,9 @@ function safeCount(): number {
 function onMessage(name: string, handler: (raw: unknown) => Promise<void>): void {
   global.onMessage(name, (raw) => {
     setTimeout(() => {
-      handler(raw).catch((e: unknown) => log.error(`${name} handler failed: ${e instanceof Error ? e.message : String(e)}`));
+      handler(raw).catch((e: unknown) =>
+        log.error(`${name} handler failed: ${e instanceof Error ? e.message : String(e)}`),
+      );
     }, 0);
   });
 }

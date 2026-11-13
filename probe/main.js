@@ -186,33 +186,33 @@ for (const name of F.counted ? COUNTED_EVENTS : []) {
 
 // ---- polling sampler: what a 1 s setInterval would see ----
 let samples = [];
-if (F.timers) setInterval(() => {
-  const s = safe(() => core.status);
-  samples.push(
-    typeof s === "object" ? [Math.round((s.position || 0) * 10) / 10, s.paused, s.idle] : s,
-  );
-}, 1000);
+if (F.timers)
+  setInterval(() => {
+    const s = safe(() => core.status);
+    samples.push(typeof s === "object" ? [Math.round((s.position || 0) * 10) / 10, s.paused, s.idle] : s);
+  }, 1000);
 
-if (F.timers) setInterval(() => {
-  const anyCount = Object.values(counters).some((c) => c.count > 0);
-  if (!anyCount && samples.length === 0) return;
-  const idle = safe(() => core.status.idle);
-  if (idle === true && !anyCount) {
+if (F.timers)
+  setInterval(() => {
+    const anyCount = Object.values(counters).some((c) => c.count > 0);
+    if (!anyCount && samples.length === 0) return;
+    const idle = safe(() => core.status.idle);
+    if (idle === true && !anyCount) {
+      samples = [];
+      return;
+    }
+    log("window-5s", {
+      counters: safeJSON(counters),
+      samples,
+      mediaTitle: safe(() => mpv.getString("media-title")),
+      icyTitle: safe(() => mpv.getString("metadata/by-key/icy-title")),
+      duration: safe(() => mpv.getNative("duration")),
+      loopFile: safe(() => mpv.getString("loop-file")),
+      loopPlaylist: safe(() => mpv.getString("loop-playlist")),
+    });
+    for (const k of Object.keys(counters)) counters[k] = { count: 0, firstArgs: counters[k].firstArgs, lastArg: null };
     samples = [];
-    return;
-  }
-  log("window-5s", {
-    counters: safeJSON(counters),
-    samples,
-    mediaTitle: safe(() => mpv.getString("media-title")),
-    icyTitle: safe(() => mpv.getString("metadata/by-key/icy-title")),
-    duration: safe(() => mpv.getNative("duration")),
-    loopFile: safe(() => mpv.getString("loop-file")),
-    loopPlaylist: safe(() => mpv.getString("loop-playlist")),
-  });
-  for (const k of Object.keys(counters)) counters[k] = { count: 0, firstArgs: counters[k].firstArgs, lastArg: null };
-  samples = [];
-}, 5000);
+  }, 5000);
 
 // ---- per file ----
 let fileSeq = 0;
@@ -278,7 +278,9 @@ async function ytdlpProbe(url) {
           was_live: j.was_live,
           webpage_url: j.webpage_url,
           descriptionHead: typeof j.description === "string" ? j.description.slice(0, 400) : j.description,
-          chapters: Array.isArray(j.chapters) ? { count: j.chapters.length, first: j.chapters.slice(0, 3) } : j.chapters,
+          chapters: Array.isArray(j.chapters)
+            ? { count: j.chapters.length, first: j.chapters.slice(0, 3) }
+            : j.chapters,
         },
       });
       return;

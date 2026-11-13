@@ -107,14 +107,14 @@
     <script>
       // Connection status. Refreshed while the page is open, because connecting happens
       // from the Plugin menu while this page may be visible.
-      (function () {
-        var statusEl = document.getElementById("status");
-        var helpEl = document.getElementById("status-help");
-        function render(name) {
+      (() => {
+        const statusEl = document.getElementById("status");
+        const helpEl = document.getElementById("status-help");
+        const render = (name) => {
           statusEl.textContent = "";
           if (typeof name === "string" && name !== "") {
             statusEl.appendChild(document.createTextNode("Connected as "));
-            var strong = document.createElement("strong");
+            const strong = document.createElement("strong");
             strong.textContent = name;
             statusEl.appendChild(strong);
             helpEl.textContent = "To disconnect, choose Plugin › Disconnect from Last.fm.";
@@ -123,10 +123,8 @@
             helpEl.textContent =
               "Choose Plugin › Connect to Last.fm… and allow access in your browser. Scrobbles made before connecting are kept and sent afterwards.";
           }
-        }
-        function refresh() {
-          window.iina.preferences.get("session_name", render);
-        }
+        };
+        const refresh = () => window.iina.preferences.get("session_name", render);
         refresh();
         setInterval(refresh, 2000);
       })();

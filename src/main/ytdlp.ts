@@ -43,7 +43,14 @@ export async function fetchYtdlpInfo(url: string): Promise<YtdlpResult> {
     let res: { status: number; stdout: string; stderr: string };
     try {
       res = await withTimeout(
-        iina.utils.exec(bin, ["-J", "--no-playlist", "--skip-download", "--no-warnings", "--ignore-no-formats-error", url]),
+        iina.utils.exec(bin, [
+          "-J",
+          "--no-playlist",
+          "--skip-download",
+          "--no-warnings",
+          "--ignore-no-formats-error",
+          url,
+        ]),
         TIMEOUT_MS,
       );
     } catch (e) {

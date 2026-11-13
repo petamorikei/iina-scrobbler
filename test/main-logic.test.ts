@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { buildTrack, type MetadataInput } from "../src/main/metadata.ts";
-import { PlaybackSession, scrobbleThreshold, type PlayerSample } from "../src/main/playback.ts";
+import { PlaybackSession, type PlayerSample, scrobbleThreshold } from "../src/main/playback.ts";
 import { classifySource, hasVideo } from "../src/main/source.ts";
 import { clean, parseFileName, splitArtistTitle, stripTrackNumber } from "../src/main/title-parser.ts";
 
@@ -16,7 +16,7 @@ test("splitArtistTitle uses the first separator in list order", () => {
 });
 
 test("clean trims, replaces NBSP, collapses spaces, NFC-normalises", () => {
-  assert.equal(clean("  A  B  "), "A B");
+  assert.equal(clean("\u00a0 A  B \u00a0"), "A B");
   assert.equal(clean("é"), "é");
   assert.equal(clean("ガ"), "ガ");
 });
@@ -42,11 +42,15 @@ test("parseFileName handles the probe's untagged file and Japanese names", () =>
 // ---- source ----
 
 test("classifySource", () => {
-  const c = (path: string, sof: string, keys: string[] = []) => classifySource({ path, streamOpenFilename: sof, metadataKeys: keys });
+  const c = (path: string, sof: string, keys: string[] = []) =>
+    classifySource({ path, streamOpenFilename: sof, metadataKeys: keys });
   assert.deepEqual(c("/Users/me/Music/a.mp3", "/Users/me/Music/a.mp3"), { source: "local", radio: false });
   assert.deepEqual(c("file:///Users/me/a.mp3", "file:///Users/me/a.mp3"), { source: "local", radio: false });
   const yt = "https://www.youtube.com/watch?v=x";
-  assert.deepEqual(c(yt, "https://manifest.googlevideo.com/api/manifest/hls_playlist/e"), { source: "ytdlp", radio: false });
+  assert.deepEqual(c(yt, "https://manifest.googlevideo.com/api/manifest/hls_playlist/e"), {
+    source: "ytdlp",
+    radio: false,
+  });
   const mp3 = "https://example.com/a.mp3";
   assert.deepEqual(c(mp3, mp3), { source: "network", radio: false });
   const radio = "https://ice2.somafm.com/groovesalad-128-mp3";
@@ -70,12 +74,23 @@ const meta = (over: Partial<MetadataInput>): MetadataInput => ({
 });
 
 test("tags win when artist and title are present", () => {
-  const r = buildTrack(meta({ tags: { artist: " テスト・アーティスト ", title: "曲名", album: "アルバム", albumArtist: "" }, duration: 40 }));
-  assert.deepEqual(r, { ok: true, from: "tags", track: { artist: "テスト・アーティスト", track: "曲名", album: "アルバム", albumArtist: undefined, duration: 40 } });
+  const r = buildTrack(
+    meta({
+      tags: { artist: " テスト・アーティスト ", title: "曲名", album: "アルバム", albumArtist: "" },
+      duration: 40,
+    }),
+  );
+  assert.deepEqual(r, {
+    ok: true,
+    from: "tags",
+    track: { artist: "テスト・アーティスト", track: "曲名", album: "アルバム", albumArtist: undefined, duration: 40 },
+  });
 });
 
 test("untagged audio falls back to the file name", () => {
-  const r = buildTrack(meta({ fileName: "05-Untagged Artist - Untagged Song.mp3", mediaTitle: "05-Untagged Artist - Untagged Song.mp3" }));
+  const r = buildTrack(
+    meta({ fileName: "05-Untagged Artist - Untagged Song.mp3", mediaTitle: "05-Untagged Artist - Untagged Song.mp3" }),
+  );
   assert.equal(r.ok && r.from, "filename");
   assert.equal(r.ok && r.track.artist, "Untagged Artist");
 });
@@ -86,20 +101,30 @@ test("artist tag only: the title comes from the file name", () => {
 });
 
 test("title tag only: the artist comes from the file name, the title stays", () => {
-  const r = buildTrack(meta({ tags: { title: "Song - Live" }, fileName: "Band - Song.mp3", mediaTitle: "Song - Live" }));
+  const r = buildTrack(
+    meta({ tags: { title: "Song - Live" }, fileName: "Band - Song.mp3", mediaTitle: "Song - Live" }),
+  );
   assert.deepEqual(r.ok && [r.track.artist, r.track.track], ["Band", "Song - Live"]);
 });
 
 test("video files need real tags", () => {
-  const r = buildTrack(meta({ isVideo: true, fileName: "07-Show Name - S01E01.mkv", mediaTitle: "07-Show Name - S01E01.mkv" }));
+  const r = buildTrack(
+    meta({ isVideo: true, fileName: "07-Show Name - S01E01.mkv", mediaTitle: "07-Show Name - S01E01.mkv" }),
+  );
   assert.equal(r.ok, false);
   const tagged = buildTrack(meta({ isVideo: true, tags: { artist: "A", title: "T" } }));
   assert.equal(tagged.ok, true);
 });
 
 test("yt-dlp sources: yt-dlp metadata first, then the video title; mpv's duration wins", () => {
-  const withInfo = buildTrack(meta({ source: "ytdlp", duration: 258.8, ytdlp: { artists: ["A"], track: "T", duration: 259 } }));
-  assert.deepEqual(withInfo.ok && [withInfo.from, withInfo.track.artist, withInfo.track.duration], ["ytdlp-music", "A", 258.8]);
+  const withInfo = buildTrack(
+    meta({ source: "ytdlp", duration: 258.8, ytdlp: { artists: ["A"], track: "T", duration: 259 } }),
+  );
+  assert.deepEqual(withInfo.ok && [withInfo.from, withInfo.track.artist, withInfo.track.duration], [
+    "ytdlp-music",
+    "A",
+    258.8,
+  ]);
   const titleOnly = buildTrack(meta({ source: "ytdlp", mediaTitle: "Artist - Song (Official Video)", ytdlp: null }));
   assert.deepEqual(titleOnly.ok && [titleOnly.from, titleOnly.track.artist], ["title", "Artist"]);
   assert.equal(buildTrack(meta({ source: "ytdlp", mediaTitle: "Just a title", ytdlp: null })).ok, false);
@@ -175,7 +200,10 @@ test("seeking does not add played time (wall clock only)", () => {
   const s = new PlaybackSession(T, "local");
   s.onPlaybackRestart(0);
   const actions = run(s, 0, 60, (i) => ({ position: i < 10 ? i : 180 + i }));
-  assert.equal(actions.some((a) => a.type === "scrobble"), false);
+  assert.equal(
+    actions.some((a) => a.type === "scrobble"),
+    false,
+  );
 });
 
 test("a delayed tick counts in full when the position moved on (timer throttling)", () => {
@@ -226,7 +254,10 @@ test("seeking backwards counts nothing for that interval", () => {
 test("too short files are skipped once", () => {
   const s = new PlaybackSession(T, "local");
   s.onPlaybackRestart(0);
-  assert.deepEqual(run(s, 0, 5, () => ({ duration: 20 })), [{ at: 0, type: "skip" }]);
+  assert.deepEqual(
+    run(s, 0, 5, () => ({ duration: 20 })),
+    [{ at: 0, type: "skip" }],
+  );
 });
 
 test("loop-file wrap starts a new play and scrobbles again", () => {
@@ -259,7 +290,10 @@ test("network media with a growing duration is treated as live and skipped", () 
   s.onPlaybackRestart(0);
   const actions = run(s, 0, 10, (i) => ({ duration: 40 + i * 5 }));
   assert.equal(actions[actions.length - 1]?.type, "skip");
-  assert.equal(actions.some((a) => a.type === "scrobble"), false);
+  assert.equal(
+    actions.some((a) => a.type === "scrobble"),
+    false,
+  );
 });
 
 test("network media waits for the duration before nowplaying", () => {

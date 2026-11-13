@@ -60,7 +60,8 @@ export function classifyFailure(error: Extract<CallResult, { ok: false }>["error
         ? { status: "retry", code: error.statusCode }
         : { status: "drop", code: error.statusCode };
     case "api":
-      if (error.code === LastFmError.InvalidSessionKey) return { status: "auth-error", code: error.code, message: error.message };
+      if (error.code === LastFmError.InvalidSessionKey)
+        return { status: "auth-error", code: error.code, message: error.message };
       if (RETRYABLE_ERRORS.has(error.code)) return { status: "retry", code: error.code, message: error.message };
       return { status: "drop", code: error.code, message: error.message };
   }
@@ -134,7 +135,14 @@ export class LastFm implements Scrobbler {
     if (!this.session) return { status: "auth-error", message: "not connected" };
     const r = await this.call(
       "track.updateNowPlaying",
-      { artist: t.artist, track: t.track, album: t.album, albumArtist: t.albumArtist, duration: roundDuration(t.duration), sk: this.session },
+      {
+        artist: t.artist,
+        track: t.track,
+        album: t.album,
+        albumArtist: t.albumArtist,
+        duration: roundDuration(t.duration),
+        sk: this.session,
+      },
       { signed: true, httpMethod: "POST" },
     );
     if (!r.ok) return classifyFailure(r.error);

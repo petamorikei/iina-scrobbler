@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
-import { MAX_AGE_MS, MAX_ITEMS, ScrobbleQueue, serializeQueue, type Storage } from "../src/global/queue.ts";
+import { test } from "vitest";
+import { MAX_AGE_MS, MAX_ITEMS, ScrobbleQueue, type Storage, serializeQueue } from "../src/global/queue.ts";
 import { RETRY_MAX_MS, RETRY_MIN_MS, Sender, type SenderDeps } from "../src/global/sender.ts";
 import type { ScrobbleEntry, Scrobbler, SendResult } from "../src/services/types.ts";
 
@@ -119,8 +119,14 @@ test("pruneExpired drops items played more than 14 days ago", () => {
   q.add("lastfm", entry("old", MAX_AGE_MS / 60_000 + 1), NOW);
   q.add("lastfm", entry("fresh"), NOW);
   const removed = q.pruneExpired(NOW);
-  assert.deepEqual(removed.map((i) => i.entry.track), ["old"]);
-  assert.deepEqual(q.load().map((i) => i.entry.track), ["fresh"]);
+  assert.deepEqual(
+    removed.map((i) => i.entry.track),
+    ["old"],
+  );
+  assert.deepEqual(
+    q.load().map((i) => i.entry.track),
+    ["fresh"],
+  );
 });
 
 test("the queue is capped, keeping the newest items", () => {

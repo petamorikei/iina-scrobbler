@@ -32,11 +32,16 @@ export function utf8Bytes(str: string): number[] {
 }
 
 const S = [
-  7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
-  4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21,
+  7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 4,
+  11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21,
 ];
 const K: number[] = [];
 for (let i = 0; i < 64; i++) K.push(Math.floor(Math.abs(Math.sin(i + 1)) * 0x100000000) >>> 0);
+
+/** Indexed read for noUncheckedIndexedAccess; every index used below is in range. */
+function at(arr: readonly number[], i: number): number {
+  return arr[i] ?? 0;
+}
 
 export function md5Bytes(bytes: readonly number[]): string {
   const bitLen = bytes.length * 8;
@@ -57,7 +62,7 @@ export function md5Bytes(bytes: readonly number[]): string {
   for (let off = 0; off < msg.length; off += 64) {
     for (let j = 0; j < 16; j++) {
       const p = off + j * 4;
-      M[j] = (msg[p]! | (msg[p + 1]! << 8) | (msg[p + 2]! << 16) | (msg[p + 3]! << 24)) >>> 0;
+      M[j] = (at(msg, p) | (at(msg, p + 1) << 8) | (at(msg, p + 2) << 16) | (at(msg, p + 3) << 24)) >>> 0;
     }
     let a = a0;
     let b = b0;
@@ -79,8 +84,8 @@ export function md5Bytes(bytes: readonly number[]): string {
         f = c ^ (b | ~d);
         g = (7 * i) % 16;
       }
-      const sum = (a + f + K[i]! + M[g]!) >>> 0;
-      const s = S[i]!;
+      const sum = (a + f + at(K, i) + at(M, g)) >>> 0;
+      const s = at(S, i);
       a = d;
       d = c;
       c = b;

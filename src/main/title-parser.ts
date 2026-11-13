@@ -52,7 +52,11 @@ export function splitArtistTitle(str: string, separators: readonly string[] = DE
 /** trim, NBSP → space, collapse runs of whitespace, Unicode NFC. */
 export function clean(s: string | null | undefined): string {
   if (!s) return "";
-  return s.replace(/ /g, " ").replace(/\s+/g, " ").trim().normalize("NFC");
+  return s
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .normalize("NFC");
 }
 
 const MEDIA_EXTENSION =

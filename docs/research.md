@@ -51,11 +51,11 @@ IINAに関する記述は、iina/iina v1.5.1のソース（`iina/Plugin/Javascri
 
 ### 1.3 main entryとglobal entry【確認】
 
-| | main entry | global entry |
-|---|---|---|
-| インスタンス | プレイヤー（PlayerCore）ごとに1つ | IINA起動時に1つ |
-| 使えるAPI | 全API | `menu`、`standaloneWindow`、`utils`、`file`、`preferences`、`console`、`http`、`ws`、`global`だけ（`core`、`mpv`、`event`は使えない） |
-| メニュー | そのウィンドウにフォーカスがあるときだけ表示 | 常に表示 |
+|              | main entry                                   | global entry                                                                                                                          |
+| ------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| インスタンス | プレイヤー（PlayerCore）ごとに1つ            | IINA起動時に1つ                                                                                                                       |
+| 使えるAPI    | 全API                                        | `menu`、`standaloneWindow`、`utils`、`file`、`preferences`、`console`、`http`、`ws`、`global`だけ（`core`、`mpv`、`event`は使えない） |
+| メニュー     | そのウィンドウにフォーカスがあるときだけ表示 | 常に表示                                                                                                                              |
 
 - PlayerCoreは破棄されず使い回される。main entryのインスタンスもウィンドウを閉じた後に残るので、**ファイルごとに状態とタイマーを必ずリセットする**
 - 通信:
@@ -147,14 +147,14 @@ connector（サイトごとのDOM取得）→ Controller（状態機械、scrobb
 - エンドポイント: `https://ws.audioscrobbler.com/2.0/`、認可ページ: `https://www.last.fm/api/auth/`
 - API key/secretはソースに直書き。**流用せず、自分で取得する**
 
-| メソッド | HTTP | 署名 | 備考 |
-|---|---|---|---|
-| `auth.getToken` | GET | web-scrobblerは無し（公式仕様は署名付きとされる【未確認】） | |
-| `auth.getSession` | GET | 有り | |
-| `track.updateNowPlaying` | POST | 有り | artist、track、album、albumArtist、duration |
-| `track.scrobble` | POST | 有り | `artist[i]`、`track[i]`、`timestamp[i]`、`album[i]`、`albumArtist[i]`、最大50件 |
-| `track.love`/`track.unlove` | POST | 有り | |
-| `track.getInfo` | GET | 無し | 補正と情報表示用 |
+| メソッド                    | HTTP | 署名                                                        | 備考                                                                            |
+| --------------------------- | ---- | ----------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `auth.getToken`             | GET  | web-scrobblerは無し（公式仕様は署名付きとされる【未確認】） |                                                                                 |
+| `auth.getSession`           | GET  | 有り                                                        |                                                                                 |
+| `track.updateNowPlaying`    | POST | 有り                                                        | artist、track、album、albumArtist、duration                                     |
+| `track.scrobble`            | POST | 有り                                                        | `artist[i]`、`track[i]`、`timestamp[i]`、`album[i]`、`albumArtist[i]`、最大50件 |
+| `track.love`/`track.unlove` | POST | 有り                                                        |                                                                                 |
+| `track.getInfo`             | GET  | 無し                                                        | 補正と情報表示用                                                                |
 
 **api_sig**: `format`と`callback`を除く全パラメータ（`api_key`を含む）をキー名でソートし、`key + value`を連結し、末尾にsecretを付けて**UTF-8で**MD5を取る。
 
@@ -232,10 +232,10 @@ return Math.min(Math.round(duration * percent / 100), 240); // percentは既定5
 
 IINAでyt-dlpを使う経路は2つあり、Online Mediaプラグイン（`io.iina.ytdl`）を有効にすると、mpv内蔵のytdl_hookは無効になる（プラグインのdescriptionより）。開発環境ではOnline Media 0.9.10が有効になっている。
 
-| 経路 | 渡される情報 |
-|---|---|
-| mpv内蔵ytdl_hook（mpv 0.41.0の`player/lua/ytdl_hook.lua`） | `force-media-title`＝動画タイトル。加えて`!global_tags`で`artist`、`album`、`album_artist`、`track`→`title`、`track_number`、`uploader`、`genre`、`upload_date`、`ytdl_description`などを`metadata`に入れる【確認】 |
-| Online Mediaプラグイン（`src/add-video.ts:119`、`src/ytdl-hook.ts:180`） | `force-media-title`＝動画タイトルだけ。artist、track、uploaderなどは`metadata`に入らない【確認】 |
+| 経路                                                                     | 渡される情報                                                                                                                                                                                                        |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| mpv内蔵ytdl_hook（mpv 0.41.0の`player/lua/ytdl_hook.lua`）               | `force-media-title`＝動画タイトル。加えて`!global_tags`で`artist`、`album`、`album_artist`、`track`→`title`、`track_number`、`uploader`、`genre`、`upload_date`、`ytdl_description`などを`metadata`に入れる【確認】 |
+| Online Mediaプラグイン（`src/add-video.ts:119`、`src/ytdl-hook.ts:180`） | `force-media-title`＝動画タイトルだけ。artist、track、uploaderなどは`metadata`に入らない【確認】                                                                                                                    |
 
 - yt-dlpの`artist`/`track`/`album`はYouTube Musicの自動生成動画など、音楽として認識されたものだけに入る【未確認】
 - `path`には元のURLが残る想定【推測、実機で要確認】

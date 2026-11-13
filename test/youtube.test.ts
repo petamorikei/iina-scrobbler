@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import {
   isPlaceholderInfo,
   parseYtTopicVideoDescription,
@@ -43,7 +43,11 @@ const TOPIC_DESC = [
 ].join("\n");
 
 test("parseYtTopicVideoDescription reads track, artist and album", () => {
-  assert.deepEqual(parseYtTopicVideoDescription(TOPIC_DESC), { artist: "Main Artist", track: "Song Title", album: "Album Name" });
+  assert.deepEqual(parseYtTopicVideoDescription(TOPIC_DESC), {
+    artist: "Main Artist",
+    track: "Song Title",
+    album: "Album Name",
+  });
 });
 
 test("parseYtTopicVideoDescription adds featured artists unless already in the title", () => {
@@ -65,13 +69,29 @@ test("stripTopicSuffix", () => {
 });
 
 test("trackFromYtdlp: music fields first, main artist only (as seen on device: YOASOBI, Ayase)", () => {
-  const r = trackFromYtdlp({ artist: "YOASOBI，Ayase", artists: ["YOASOBI", "Ayase"], track: "夜に駆ける", album: "Al", title: "whatever", duration: 200 });
-  assert.deepEqual(r, { ok: true, from: "ytdlp-music", track: { artist: "YOASOBI", track: "夜に駆ける", album: "Al", duration: 200 } });
+  const r = trackFromYtdlp({
+    artist: "YOASOBI，Ayase",
+    artists: ["YOASOBI", "Ayase"],
+    track: "夜に駆ける",
+    album: "Al",
+    title: "whatever",
+    duration: 200,
+  });
+  assert.deepEqual(r, {
+    ok: true,
+    from: "ytdlp-music",
+    track: { artist: "YOASOBI", track: "夜に駆ける", album: "Al", duration: 200 },
+  });
 });
 
 test("trackFromYtdlp: topic description next", () => {
   const r = trackFromYtdlp({ title: "Song Title", channel: "Main Artist - Topic", description: TOPIC_DESC });
-  assert.deepEqual(r.ok && [r.from, r.track.artist, r.track.track, r.track.album], ["ytdlp-description", "Main Artist", "Song Title", "Album Name"]);
+  assert.deepEqual(r.ok && [r.from, r.track.artist, r.track.track, r.track.album], [
+    "ytdlp-description",
+    "Main Artist",
+    "Song Title",
+    "Album Name",
+  ]);
 });
 
 test("trackFromYtdlp: title, with the channel as artist when the title has none", () => {
@@ -90,7 +110,10 @@ test("trackFromYtdlp: live streams are skipped", () => {
 });
 
 test("placeholder results for unknown videos are recognised", () => {
-  assert.equal(isPlaceholderInfo({ title: "youtube video #abc", channel: null, uploader: null, description: null }), true);
+  assert.equal(
+    isPlaceholderInfo({ title: "youtube video #abc", channel: null, uploader: null, description: null }),
+    true,
+  );
   assert.equal(isPlaceholderInfo({ title: "Real title", channel: "C" }), false);
 });
 

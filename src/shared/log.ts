@@ -18,7 +18,7 @@ export function createLogger(scope: string) {
     lines.push(`${new Date().toISOString()} ${level} ${msg}`);
     if (lines.length > MAX_LINES) lines.splice(0, lines.length - MAX_LINES);
     try {
-      iina.file.write(path, lines.join("\n") + "\n");
+      iina.file.write(path, `${lines.join("\n")}\n`);
     } catch {
       // Logging must never break playback.
     }

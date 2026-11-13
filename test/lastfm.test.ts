@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import type { HttpFn, HttpOutcome } from "../src/services/http.ts";
 import { LASTFM_API_URL, LastFm, parseScrobbleResponse } from "../src/services/lastfm/lastfm.ts";
 import { apiSignature } from "../src/services/lastfm/signature.ts";
@@ -134,7 +134,10 @@ test("scrobble: a single result comes back as an object, not an array", () => {
 });
 
 test("scrobble: daily limit (ignored code 5) is retried, not dropped", () => {
-  const r = parseScrobbleResponse({ scrobbles: { scrobble: { ignoredMessage: { code: "5", "#text": "Daily limit" } } } }, 1);
+  const r = parseScrobbleResponse(
+    { scrobbles: { scrobble: { ignoredMessage: { code: "5", "#text": "Daily limit" } } } },
+    1,
+  );
   assert.equal(r[0]!.status, "retry");
 });
 

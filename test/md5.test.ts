@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { test } from "node:test";
+import { test } from "vitest";
 import { md5, utf8Bytes } from "../src/services/md5.ts";
 
 const nodeMd5 = (s: string) => createHash("md5").update(s, "utf8").digest("hex");
@@ -33,9 +33,12 @@ test("block-boundary lengths match node:crypto", () => {
 });
 
 test("random mixed strings match node:crypto", () => {
-  const pool = ["a", "Z", "0", " ", "&", "=", "?", "/", "é", "ß", "日", "本", "ー", "♪", "😀", "𝄞", " ", "\n"];
+  const pool = ["a", "Z", "0", " ", "&", "=", "?", "/", "é", "ß", "日", "本", "ー", "♪", "😀", "𝄞", "\u00a0", "\n"];
   let seed = 42;
-  const rand = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x80000000;
+  const rand = () => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x80000000;
+  };
   for (let i = 0; i < 2000; i++) {
     let s = "";
     const len = Math.floor(rand() * 80);

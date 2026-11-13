@@ -67,7 +67,10 @@ try {
     ["abc", "900150983cd24fb0d6963f7d28e17f72"],
     ["日本語のアーティスト", "29772ebcad669e0075d1f52df091889b"],
   ];
-  log("md5", vectors.map(([s, want]) => ({ s, got: md5(s), ok: md5(s) === want })));
+  log(
+    "md5",
+    vectors.map(([s, want]) => ({ s, got: md5(s), ok: md5(s) === want })),
+  );
 } catch (e) {
   log("md5-error", { message: String(e) });
 }
@@ -140,8 +143,12 @@ async function probeExec() {
       const res = await utils.exec(c, ["--version"]);
       r.exec = {
         status: res.status,
-        stdout: String(res.stdout || "").trim().slice(0, 200),
-        stderr: String(res.stderr || "").trim().slice(0, 300),
+        stdout: String(res.stdout || "")
+          .trim()
+          .slice(0, 200),
+        stderr: String(res.stderr || "")
+          .trim()
+          .slice(0, 300),
       };
     } catch (e) {
       r.execError = String(e && e.message ? e.message : e);
@@ -155,12 +162,21 @@ async function startupTests() {
   await probeExec();
   // Invalid API key: shows how Last.fm errors come back through iina.http.
   const bogus = { apiKey: "0123456789abcdef0123456789abcdef", apiSecret: "x" };
-  log("http-invalid-key-GET", await lastfm("auth.getSession", { token: "probe" }, { signed: true, httpMethod: "GET", ...bogus }));
-  log("http-invalid-key-POST", await lastfm("auth.getSession", { token: "probe" }, { signed: true, httpMethod: "POST", ...bogus }));
+  log(
+    "http-invalid-key-GET",
+    await lastfm("auth.getSession", { token: "probe" }, { signed: true, httpMethod: "GET", ...bogus }),
+  );
+  log(
+    "http-invalid-key-POST",
+    await lastfm("auth.getSession", { token: "probe" }, { signed: true, httpMethod: "POST", ...bogus }),
+  );
   const c = creds();
   if (c.apiKey && c.apiSecret) {
     // Valid key but bogus token → expected error (likely 4 / 14 / 15).
-    log("http-bogus-token-GET", await lastfm("auth.getSession", { token: "probe-invalid-token" }, { signed: true, httpMethod: "GET", ...c }));
+    log(
+      "http-bogus-token-GET",
+      await lastfm("auth.getSession", { token: "probe-invalid-token" }, { signed: true, httpMethod: "GET", ...c }),
+    );
   } else {
     log("note", "api_key/api_secret not set; Last.fm auth probes skipped");
   }
@@ -178,9 +194,15 @@ async function authFlow() {
   }
   if (pollTimer) clearInterval(pollTimer);
   const unsigned = await lastfm("auth.getToken", {}, { signed: false, httpMethod: "GET", ...c });
-  log("auth.getToken-unsigned", { ...unsigned, data: unsigned.data && unsigned.data.token ? { token: mask(unsigned.data.token) } : unsigned.data });
+  log("auth.getToken-unsigned", {
+    ...unsigned,
+    data: unsigned.data && unsigned.data.token ? { token: mask(unsigned.data.token) } : unsigned.data,
+  });
   const signed = await lastfm("auth.getToken", {}, { signed: true, httpMethod: "GET", ...c });
-  log("auth.getToken-signed", { ...signed, data: signed.data && signed.data.token ? { token: mask(signed.data.token) } : signed.data });
+  log("auth.getToken-signed", {
+    ...signed,
+    data: signed.data && signed.data.token ? { token: mask(signed.data.token) } : signed.data,
+  });
   const token = (signed.data && signed.data.token) || (unsigned.data && unsigned.data.token);
   if (!token) return;
 
@@ -197,7 +219,14 @@ async function authFlow() {
     const r = await lastfm("auth.getSession", { token }, { signed: true, httpMethod: "GET", ...c });
     const err = r.data && r.data.error;
     const session = r.data && r.data.session;
-    log("auth.getSession-poll", { tries, outcome: r.outcome, statusCode: r.statusCode, error: err, message: r.data && r.data.message, gotSession: !!session });
+    log("auth.getSession-poll", {
+      tries,
+      outcome: r.outcome,
+      statusCode: r.statusCode,
+      error: err,
+      message: r.data && r.data.message,
+      gotSession: !!session,
+    });
     if (session) {
       clearInterval(pollTimer);
       pollTimer = null;

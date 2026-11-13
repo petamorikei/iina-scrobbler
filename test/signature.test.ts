@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { test } from "node:test";
+import { test } from "vitest";
 import { apiSignature, buildParams } from "../src/services/lastfm/signature.ts";
 
 const nodeMd5 = (s: string) => createHash("md5").update(s, "utf8").digest("hex");

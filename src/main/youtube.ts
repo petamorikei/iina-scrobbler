@@ -69,7 +69,9 @@ const YT_DESC_SEPARATOR = " · ";
  *   <Track> · <Artist> · <Featured artist>...
  *   <Album>
  */
-export function parseYtTopicVideoDescription(desc: string | null | undefined): (ArtistTrack & { album: string | null }) | null {
+export function parseYtTopicVideoDescription(
+  desc: string | null | undefined,
+): (ArtistTrack & { album: string | null }) | null {
   if (!desc || !(desc.startsWith(YT_DESC_FIRST_LINE) || desc.trimEnd().endsWith(YT_DESC_LAST_LINE))) return null;
   const lines = desc
     .split("\n")
@@ -142,7 +144,11 @@ export function trackFromYtdlp(info: YtdlpInfo): YtTrackResult {
   // 2. "Provided to YouTube by ..." description.
   const desc = parseYtTopicVideoDescription(info.description);
   if (desc?.artist && desc.track) {
-    return { ok: true, from: "ytdlp-description", track: { artist: desc.artist, track: desc.track, album: desc.album ?? album, duration } };
+    return {
+      ok: true,
+      from: "ytdlp-description",
+      track: { artist: desc.artist, track: desc.track, album: desc.album ?? album, duration },
+    };
   }
 
   // 3. Video title, with the channel name as the artist when the title has none.
