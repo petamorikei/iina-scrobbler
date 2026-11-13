@@ -3,7 +3,7 @@
 // the digest are implemented here. Lone surrogates are encoded as U+FFFD, the same as
 // Node's Buffer.from(str, "utf8") and Swift's String bridging.
 
-export function utf8Bytes(str: string): number[] {
+export const utf8Bytes = (str: string): number[] => {
   const out: number[] = [];
   for (let i = 0; i < str.length; i++) {
     let c = str.charCodeAt(i);
@@ -29,7 +29,7 @@ export function utf8Bytes(str: string): number[] {
     }
   }
   return out;
-}
+};
 
 const S = [
   7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 4,
@@ -39,11 +39,11 @@ const K: number[] = [];
 for (let i = 0; i < 64; i++) K.push(Math.floor(Math.abs(Math.sin(i + 1)) * 0x100000000) >>> 0);
 
 /** Indexed read for noUncheckedIndexedAccess; every index used below is in range. */
-function at(arr: readonly number[], i: number): number {
+const at = (arr: readonly number[], i: number): number => {
   return arr[i] ?? 0;
-}
+};
 
-export function md5Bytes(bytes: readonly number[]): string {
+export const md5Bytes = (bytes: readonly number[]): string => {
   const bitLen = bytes.length * 8;
   const msg = bytes.slice();
   msg.push(0x80);
@@ -102,8 +102,8 @@ export function md5Bytes(bytes: readonly number[]): string {
     for (let i = 0; i < 4; i++) hex += ((word >>> (8 * i)) & 0xff).toString(16).padStart(2, "0");
   }
   return hex;
-}
+};
 
-export function md5(str: string): string {
+export const md5 = (str: string): string => {
   return md5Bytes(utf8Bytes(str));
-}
+};

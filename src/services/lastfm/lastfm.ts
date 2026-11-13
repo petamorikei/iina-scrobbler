@@ -46,12 +46,12 @@ export type CallResult =
   | { ok: false; error: { kind: "http"; statusCode: number } }
   | { ok: false; error: { kind: "network"; message: string } };
 
-function isRecord(v: unknown): v is Record<string, unknown> {
+const isRecord = (v: unknown): v is Record<string, unknown> => {
   return typeof v === "object" && v !== null && !Array.isArray(v);
-}
+};
 
 /** Maps a failed call to a per-track send status. */
-export function classifyFailure(error: Extract<CallResult, { ok: false }>["error"]): SendResult {
+export const classifyFailure = (error: Extract<CallResult, { ok: false }>["error"]): SendResult => {
   switch (error.kind) {
     case "network":
       return { status: "retry", message: error.message };
@@ -65,16 +65,16 @@ export function classifyFailure(error: Extract<CallResult, { ok: false }>["error
       if (RETRYABLE_ERRORS.has(error.code)) return { status: "retry", code: error.code, message: error.message };
       return { status: "drop", code: error.code, message: error.message };
   }
-}
+};
 
 /** Reads `ignoredMessage` from a nowplaying / scrobble item. */
-export function classifyItem(item: unknown): SendResult {
+export const classifyItem = (item: unknown): SendResult => {
   const ignored = isRecord(item) ? item.ignoredMessage : undefined;
   const code = isRecord(ignored) ? String(ignored.code ?? "0") : "0";
   if (code === "0") return { status: "ok" };
   const message = isRecord(ignored) && typeof ignored["#text"] === "string" ? ignored["#text"] : undefined;
   return { status: code === IGNORED_DAILY_LIMIT ? "retry" : "ignored", code, message };
-}
+};
 
 export class LastFm implements Scrobbler {
   readonly id = "lastfm";
@@ -175,20 +175,20 @@ export class LastFm implements Scrobbler {
  * `{scrobbles: {"@attr": {accepted, ignored}, scrobble: item | item[]}}`.
  * A single scrobble comes back as an object, several as an array.
  */
-export function parseScrobbleResponse(data: Record<string, unknown>, count: number): SendResult[] {
+export const parseScrobbleResponse = (data: Record<string, unknown>, count: number): SendResult[] => {
   const scrobbles = data.scrobbles;
   const raw = isRecord(scrobbles) ? scrobbles.scrobble : undefined;
   const items = Array.isArray(raw) ? raw : raw === undefined ? [] : [raw];
   if (items.length === count) return items.map(classifyItem);
   // Unexpected shape: the request itself succeeded, so do not resend.
   return Array.from({ length: count }, () => ({ status: "ok" as const }));
-}
+};
 
-function roundDuration(d: number | undefined): number | undefined {
+const roundDuration = (d: number | undefined): number | undefined => {
   return d !== undefined && Number.isFinite(d) && d > 0 ? Math.round(d) : undefined;
-}
+};
 
-function describe(e: Extract<CallResult, { ok: false }>["error"]): string {
+const describe = (e: Extract<CallResult, { ok: false }>["error"]): string => {
   switch (e.kind) {
     case "api":
       return `error ${e.code}: ${e.message}`;
@@ -197,4 +197,4 @@ function describe(e: Extract<CallResult, { ok: false }>["error"]): string {
     case "network":
       return `network: ${e.message}`;
   }
-}
+};

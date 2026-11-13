@@ -37,7 +37,7 @@ interface QueueFile {
   items: QueueItem[];
 }
 
-function isItem(v: unknown): v is QueueItem {
+const isItem = (v: unknown): v is QueueItem => {
   if (typeof v !== "object" || v === null) return false;
   const o = v as Record<string, unknown>;
   const e = o.entry as Record<string, unknown> | undefined;
@@ -51,9 +51,9 @@ function isItem(v: unknown): v is QueueItem {
     typeof e.track === "string" &&
     typeof e.timestamp === "number"
   );
-}
+};
 
-export function parseQueue(content: string): QueueItem[] | null {
+export const parseQueue = (content: string): QueueItem[] | null => {
   try {
     const data = JSON.parse(content) as Partial<QueueFile>;
     if (!Array.isArray(data.items)) return null;
@@ -61,16 +61,16 @@ export function parseQueue(content: string): QueueItem[] | null {
   } catch {
     return null;
   }
-}
+};
 
-export function serializeQueue(items: readonly QueueItem[]): string {
+export const serializeQueue = (items: readonly QueueItem[]): string => {
   const file: QueueFile = { version: VERSION, items: [...items] };
   return JSON.stringify(file);
-}
+};
 
-export function newId(now: number): string {
+export const newId = (now: number): string => {
   return `${now.toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
+};
 
 export interface Outcome {
   /** Remove from the queue (sent, ignored by the service, or permanently failed). */

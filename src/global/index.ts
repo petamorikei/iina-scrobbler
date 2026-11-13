@@ -44,9 +44,9 @@ const sender = new Sender(lastfm, queue, {
 });
 
 /** Runs a sender operation without letting a rejection go unnoticed. */
-function send(op: () => Promise<void>): void {
+const send = (op: () => Promise<void>): void => {
   op().catch((e: unknown) => log.error(`sending failed: ${e instanceof Error ? e.message : String(e)}`));
-}
+};
 
 // ---- auth ----
 
@@ -60,20 +60,20 @@ const auth = new AuthController(lastfm, log, {
   onStateChange: () => rebuildMenu(),
 });
 
-function disconnect(reason: string): void {
+const disconnect = (reason: string): void => {
   lastfm.session = null;
   setAndSync({ [PrefKey.SessionKey]: "", [PrefKey.SessionName]: "" });
   log.info(`Last.fm: disconnected (${reason})`);
   rebuildMenu();
-}
+};
 
 // ---- menu ----
 
 /** A disabled, informational menu item. IINA treats a null action as "no action"
  * (JavascriptAPIMenu.swift); the type definition wrongly disallows null. */
-function label(title: string): IINA.MenuItem {
+const label = (title: string): IINA.MenuItem => {
   return menu.item(title, null as unknown as undefined, { enabled: false });
-}
+};
 
 /**
  * Rebuilds the Plugin menu items.
@@ -84,13 +84,13 @@ function label(title: string): IINA.MenuItem {
  * (JavascriptPlugin.plugin.globalInstance). That player is then bound to no global
  * entry and every postMessage from it is silently dropped (research.md §8.5.3).
  */
-function rebuildMenu(refresh = true): void {
+const rebuildMenu = (refresh = true): void => {
   menu.removeAllItems();
   addMenuItems();
   if (refresh) menu.forceUpdate();
-}
+};
 
-function addMenuItems(): void {
+const addMenuItems = (): void => {
   if (!HAS_LASTFM_CREDENTIALS) {
     menu.addItem(label("Last.fm: API key missing in this build"));
     return;
@@ -117,15 +117,15 @@ function addMenuItems(): void {
   }
 
   if (lastfm.session) menu.addItem(menu.item("Disconnect from Last.fm", () => disconnect("by user")));
-}
+};
 
-function safeCount(): number {
+const safeCount = (): number => {
   try {
     return queue.count(lastfm.id);
   } catch {
     return 0;
   }
-}
+};
 
 // ---- messages from main entries ----
 
@@ -133,7 +133,7 @@ function safeCount(): number {
  * Registers a message handler that runs outside the cross-context call from the main
  * entry (setTimeout), and logs instead of losing exceptions as unhandled rejections.
  */
-function onMessage(name: string, handler: (raw: unknown) => Promise<void>): void {
+const onMessage = (name: string, handler: (raw: unknown) => Promise<void>): void => {
   global.onMessage(name, (raw) => {
     setTimeout(() => {
       handler(raw).catch((e: unknown) =>
@@ -141,16 +141,16 @@ function onMessage(name: string, handler: (raw: unknown) => Promise<void>): void
       );
     }, 0);
   });
-}
+};
 
-function logNowPlaying(what: string, r: SendResult): void {
+const logNowPlaying = (what: string, r: SendResult): void => {
   const detail = [r.code !== undefined ? `code ${r.code}` : "", r.message ?? ""].filter(Boolean).join(", ");
   const line = `nowplaying ${r.status}: ${what}${detail ? ` (${detail})` : ""}`;
   if (r.status === "ok") log.info(line);
   else log.warn(line);
   // Error 9: the session was revoked on last.fm. "not connected" carries no code.
   if (r.status === "auth-error" && r.code !== undefined) disconnect(`session rejected, ${detail}`);
-}
+};
 
 onMessage("nowplaying", async (raw) => {
   const msg = decode("nowplaying", raw);

@@ -6,7 +6,7 @@ import type { ScrobbleEntry, Scrobbler, SendResult } from "../src/services/types
 
 // ---- helpers ----
 
-function memoryStorage(initial: string | null = null) {
+const memoryStorage = (initial: string | null = null) => {
   const s = { content: initial, backups: [] as string[] };
   const storage: Storage = {
     read: () => s.content,
@@ -18,7 +18,7 @@ function memoryStorage(initial: string | null = null) {
     },
   };
   return { s, storage };
-}
+};
 
 const NOW = Date.UTC(2026, 10, 13, 12, 0, 0);
 const entry = (track: string, minutesAgo = 10): ScrobbleEntry => ({
@@ -51,7 +51,7 @@ class FakeService implements Scrobbler {
   }
 }
 
-function fakeDeps() {
+const fakeDeps = () => {
   const timers: { fn: () => void; ms: number }[] = [];
   const authErrors: string[] = [];
   const deps: SenderDeps = {
@@ -72,7 +72,7 @@ function fakeDeps() {
     onQueueChange: () => {},
   };
   return { deps, timers, authErrors };
-}
+};
 
 // ---- queue ----
 

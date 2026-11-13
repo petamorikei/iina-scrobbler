@@ -3,7 +3,7 @@
 // object (docs/research.md §8.5); fold that back into an ordinary response here.
 import type { HttpFn, HttpOutcome } from "../services/http.ts";
 
-function parseBody(data: unknown, text: unknown): unknown {
+const parseBody = (data: unknown, text: unknown): unknown => {
   if (data !== undefined && data !== null) return data;
   if (typeof text === "string" && text !== "") {
     try {
@@ -13,7 +13,7 @@ function parseBody(data: unknown, text: unknown): unknown {
     }
   }
   return null;
-}
+};
 
 export const iinaHttp: HttpFn = async (method, url, params): Promise<HttpOutcome> => {
   const options = method === "GET" ? { params, headers: {}, data: {} } : { params: {}, headers: {}, data: params };

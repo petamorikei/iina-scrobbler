@@ -20,7 +20,7 @@
   - ネットラジオ: `metadata`に`icy-`で始まるキーがある。`duration`はバッファの長さで増え続けるので、長さでは見分けられない
   - ライブ配信: yt-dlpの結果で`is_live`が真
   - 念のため、`file-loaded`から数秒後に`duration`が変わり続けているものも送らない
-- **D4**: TypeScriptにすると、IINAの型定義（誤りは手元で補う）を使え、Node上で判定ロジックの単体テストが書ける。バンドルすれば`require`のキャッシュの疑い（research.md 1.6）も避けられる。代わりに依存パッケージの導入とビルドの手順が増える。ツールとタスクはmise（`mise.toml`）、パッケージマネージャはpnpmで管理する。リントと整形はBiome、単体テストはVitest、コミット前の検査はprekで行う（`pnpm-template`に合わせた）。
+- **D4**: TypeScriptにすると、IINAの型定義（誤りは手元で補う）を使え、Node上で判定ロジックの単体テストが書ける。バンドルすれば`require`のキャッシュの疑い（research.md 1.6）も避けられる。代わりに依存パッケージの導入とビルドの手順が増える。ツールとタスクはmise（`mise.toml`）、パッケージマネージャはpnpmで管理する。リントと整形はBiome、単体テストはVitest、コミット前の検査はprekで行う（`pnpm-template`に合わせた）。関数はアロー関数で書き、`function`は使わない（Biomeの`useConsistentFunctionStyle`と`useArrowFunction`で強制する。`probe/`は対象外）。
 
 ## 1. 全体構成
 

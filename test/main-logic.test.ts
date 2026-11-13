@@ -157,13 +157,18 @@ const sample = (over: Partial<PlayerSample> = {}): PlayerSample => ({
 });
 
 /** Drives a session with one tick per second (position advancing 1 s/s unless overridden). */
-function run(s: PlaybackSession, start: number, seconds: number, f: (i: number) => Partial<PlayerSample> = () => ({})) {
+const run = (
+  s: PlaybackSession,
+  start: number,
+  seconds: number,
+  f: (i: number) => Partial<PlayerSample> = () => ({}),
+) => {
   const out: { at: number; type: string }[] = [];
   for (let i = 0; i <= seconds; i++) {
     for (const a of s.tick(start + i * 1000, sample({ position: i, ...f(i) }))) out.push({ at: i, type: a.type });
   }
   return out;
-}
+};
 
 test("nothing happens before playback-restart", () => {
   const s = new PlaybackSession(T, "local");

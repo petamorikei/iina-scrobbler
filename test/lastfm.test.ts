@@ -13,7 +13,7 @@ interface Call {
   params: Record<string, string>;
 }
 
-function fake(...outcomes: HttpOutcome[]): { http: HttpFn; calls: Call[] } {
+const fake = (...outcomes: HttpOutcome[]): { http: HttpFn; calls: Call[] } => {
   const calls: Call[] = [];
   const http: HttpFn = async (method, url, params) => {
     calls.push({ method, url, params });
@@ -22,7 +22,7 @@ function fake(...outcomes: HttpOutcome[]): { http: HttpFn; calls: Call[] } {
     return next;
   };
   return { http, calls };
-}
+};
 
 const ok = (data: unknown): HttpOutcome => ({ kind: "response", statusCode: 200, data });
 const apiError = (statusCode: number, error: number, message = "msg"): HttpOutcome => ({
@@ -31,10 +31,10 @@ const apiError = (statusCode: number, error: number, message = "msg"): HttpOutco
   data: { error, message },
 });
 
-function assertSigned(params: Record<string, string>) {
+const assertSigned = (params: Record<string, string>) => {
   const { api_sig, ...rest } = params;
   assert.equal(api_sig, apiSignature(rest, creds.apiSecret));
-}
+};
 
 // ---- auth ----
 

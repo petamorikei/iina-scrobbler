@@ -5,14 +5,14 @@ import type { Track } from "../services/types.ts";
 import type { Source } from "../shared/messages.ts";
 
 /** web-scrobbler's rule: skip < 30 s, scrobble at min(50 %, 4 min); 30 s if the length is unknown. */
-export function scrobbleThreshold(duration: number | undefined, source: Source): number | null {
+export const scrobbleThreshold = (duration: number | undefined, source: Source): number | null => {
   if (!duration || !Number.isFinite(duration) || duration <= 0) {
     // Unknown length: a local file is still a file; a stream may be live (D3).
     return source === "local" ? 30 : null;
   }
   if (duration < 30) return null;
   return Math.min(Math.round(duration / 2), 240);
-}
+};
 
 export interface PlayerSample {
   paused: boolean;

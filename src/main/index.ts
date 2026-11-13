@@ -24,27 +24,27 @@ const SOURCE_PREF: Record<Source, string> = {
 let file: { seq: number; startedAt: number | null } = { seq: 0, startedAt: null };
 let session: PlaybackSession | null = null;
 
-function str(prop: string): string {
+const str = (prop: string): string => {
   const v = mpv.getString(prop);
   return typeof v === "string" ? v : "";
-}
+};
 
-function post<N extends MessageName>(name: N, payload: MessageMap[N]): void {
+const post = <N extends MessageName>(name: N, payload: MessageMap[N]): void => {
   global.postMessage(name, encode(name, payload));
-}
+};
 
-function osd(text: string): void {
+const osd = (text: string): void => {
   if (getBool(PrefKey.ShowOsd, true)) core.osd(text);
-}
+};
 
-function startSession(track: Track, source: Source, from: string): void {
+const startSession = (track: Track, source: Source, from: string): void => {
   session = new PlaybackSession(track, source);
   // yt-dlp metadata arrives a couple of seconds after playback started.
   if (file.startedAt !== null) session.onPlaybackRestart(file.startedAt);
   log.info(`${source}: ${track.artist} - ${track.track} (from ${from})`);
-}
+};
 
-function onFileLoaded(): void {
+const onFileLoaded = (): void => {
   session = null;
   file = { seq: file.seq + 1, startedAt: null };
   const seq = file.seq;
@@ -101,9 +101,9 @@ function onFileLoaded(): void {
       finish({ ...input, ytdlp: r.ok ? r.info : null, duration: core.status.duration ?? input.duration });
     })
     .catch((e: unknown) => log.error(`yt-dlp: ${e instanceof Error ? e.message : String(e)}`));
-}
+};
 
-function tick(): void {
+const tick = (): void => {
   const s = session;
   if (!s) return;
   const st = core.status;
@@ -134,15 +134,15 @@ function tick(): void {
         break;
     }
   }
-}
+};
 
 // End of this file (next file, stop, close). A new session starts at the next file-loaded.
-function endSession(why: string): void {
+const endSession = (why: string): void => {
   file = { seq: file.seq + 1, startedAt: null };
   if (!session) return;
   log.info(`${why}: ${session.track.artist} - ${session.track.track} (${session.describe()})`);
   session = null;
-}
+};
 
 event.on("iina.file-loaded", () => onFileLoaded());
 event.on("mpv.playback-restart", () => {

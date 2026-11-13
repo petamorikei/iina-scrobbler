@@ -13,14 +13,14 @@ const UNSIGNED = new Set(["format", "callback"]);
  * for the ASCII parameter names Last.fm uses this equals byte order
  * (e.g. "albumArtist[0]" < "album[0]" because "A" < "[").
  */
-export function apiSignature(params: Params, secret: string): string {
+export const apiSignature = (params: Params, secret: string): string => {
   const keys = Object.keys(params)
     .filter((k) => !UNSIGNED.has(k))
     .sort();
   let s = "";
   for (const k of keys) s += k + params[k];
   return md5(s + secret);
-}
+};
 
 export interface Credentials {
   apiKey: string;
@@ -32,12 +32,12 @@ export interface Credentials {
  * when requested, and asks for JSON. All values are strings because iina.http drops
  * the whole dictionary if any value is not a string.
  */
-export function buildParams(
+export const buildParams = (
   method: string,
   params: Record<string, string | number | undefined>,
   creds: Credentials,
   signed: boolean,
-): Params {
+): Params => {
   const p: Params = {};
   for (const [k, v] of Object.entries(params)) {
     if (v === undefined || v === "") continue;
@@ -48,4 +48,4 @@ export function buildParams(
   if (signed) p.api_sig = apiSignature(p, creds.apiSecret);
   p.format = "json";
   return p;
-}
+};

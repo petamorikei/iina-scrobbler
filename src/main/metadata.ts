@@ -21,7 +21,7 @@ export interface MetadataInput {
 
 export type MetadataResult = { ok: true; track: Track; from: string } | { ok: false; reason: string; live?: boolean };
 
-export function buildTrack(input: MetadataInput): MetadataResult {
+export const buildTrack = (input: MetadataInput): MetadataResult => {
   const tagArtist = clean(input.tags.artist);
   const tagTitle = clean(input.tags.title);
   const duration = input.duration && input.duration > 0 ? input.duration : undefined;
@@ -50,4 +50,4 @@ export function buildTrack(input: MetadataInput): MetadataResult {
     tagTitle || split?.title || (tagArtist ? stripTrackNumber(clean(stripExtension(clean(input.fileName)))) : "");
   if (artist && title) return { ok: true, track: { artist, track: title, ...extra }, from: "filename" };
   return { ok: false, reason: "no artist/title tags and the file name has no separator" };
-}
+};

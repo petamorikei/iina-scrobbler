@@ -12,12 +12,12 @@ export interface MessageMap {
 
 export type MessageName = keyof MessageMap;
 
-export function encode<N extends MessageName>(_name: N, payload: MessageMap[N]): string {
+export const encode = <N extends MessageName>(_name: N, payload: MessageMap[N]): string => {
   return JSON.stringify(payload);
-}
+};
 
 /** Returns null for anything that is not a JSON string of the expected shape. */
-export function decode<N extends MessageName>(name: N, raw: unknown): MessageMap[N] | null {
+export const decode = <N extends MessageName>(name: N, raw: unknown): MessageMap[N] | null => {
   if (typeof raw !== "string") return null;
   let v: unknown;
   try {
@@ -32,4 +32,4 @@ export function decode<N extends MessageName>(name: N, raw: unknown): MessageMap
   if (!t || typeof t.artist !== "string" || typeof t.track !== "string" || !t.artist || !t.track) return null;
   if (name === "scrobble" && typeof t.timestamp !== "number") return null;
   return v as MessageMap[N];
-}
+};

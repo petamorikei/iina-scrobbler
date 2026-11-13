@@ -7,13 +7,13 @@ import { getBool, PrefKey } from "./prefs.ts";
 
 const MAX_LINES = 500;
 
-export function createLogger(scope: string) {
+export const createLogger = (scope: string) => {
   const prefix = `[scrobbler:${scope}]`;
   const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   const path = `@data/debug-${scope}-${id}.log`;
   const lines: string[] = [];
 
-  function toFile(level: string, msg: string): void {
+  const toFile = (level: string, msg: string): void => {
     if (!getBool(PrefKey.DebugLog, false)) return;
     lines.push(`${new Date().toISOString()} ${level} ${msg}`);
     if (lines.length > MAX_LINES) lines.splice(0, lines.length - MAX_LINES);
@@ -22,7 +22,7 @@ export function createLogger(scope: string) {
     } catch {
       // Logging must never break playback.
     }
-  }
+  };
 
   return {
     info: (msg: string) => {
@@ -38,6 +38,6 @@ export function createLogger(scope: string) {
       toFile("ERROR", msg);
     },
   };
-}
+};
 
 export type Logger = ReturnType<typeof createLogger>;

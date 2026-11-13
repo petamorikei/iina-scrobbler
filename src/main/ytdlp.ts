@@ -14,13 +14,13 @@ let knownGood: string | null = null;
 
 export type YtdlpResult = { ok: true; info: YtdlpInfo; bin: string; ms: number } | { ok: false; error: string };
 
-function candidates(): string[] {
+const candidates = (): string[] => {
   const configured = getString(PrefKey.YtdlpPath).trim();
   const list = [configured, knownGood ?? "", ...CANDIDATES].filter(Boolean);
   return list.filter((c, i) => list.indexOf(c) === i);
-}
+};
 
-function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T> => {
   return new Promise<T>((resolve, reject) => {
     const t = setTimeout(() => reject(new Error(`timed out after ${ms / 1000} s`)), ms);
     p.then(
@@ -34,9 +34,9 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
       },
     );
   });
-}
+};
 
-export async function fetchYtdlpInfo(url: string): Promise<YtdlpResult> {
+export const fetchYtdlpInfo = async (url: string): Promise<YtdlpResult> => {
   const errors: string[] = [];
   for (const bin of candidates()) {
     const t0 = Date.now();
@@ -73,4 +73,4 @@ export async function fetchYtdlpInfo(url: string): Promise<YtdlpResult> {
     return { ok: true, info, bin, ms: Date.now() - t0 };
   }
   return { ok: false, error: `yt-dlp not found (${errors.join("; ")})` };
-}
+};

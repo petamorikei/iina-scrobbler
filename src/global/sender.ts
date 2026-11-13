@@ -145,6 +145,6 @@ export class Sender {
   }
 }
 
-function describe(r: SendResult): string {
+const describe = (r: SendResult): string => {
   return [r.code !== undefined ? `code ${r.code}` : "", r.message ?? ""].filter(Boolean).join(", ") || r.status;
-}
+};

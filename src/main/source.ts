@@ -18,7 +18,7 @@ export interface SourceInfo {
 
 const URL_SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i;
 
-export function classifySource(input: SourceInput): SourceInfo {
+export const classifySource = (input: SourceInput): SourceInfo => {
   const { path, streamOpenFilename } = input;
   const radio = input.metadataKeys.some((k) => k.toLowerCase().startsWith("icy-"));
   if (!URL_SCHEME.test(path) || /^file:\/\//i.test(path)) return { source: "local", radio: false };
@@ -26,7 +26,7 @@ export function classifySource(input: SourceInput): SourceInfo {
     return { source: "ytdlp", radio };
   }
   return { source: "network", radio };
-}
+};
 
 export interface TrackInfo {
   type: string;
@@ -35,6 +35,6 @@ export interface TrackInfo {
 }
 
 /** True when the file has a real video track (cover art embedded in audio files does not count). */
-export function hasVideo(tracks: readonly TrackInfo[]): boolean {
+export const hasVideo = (tracks: readonly TrackInfo[]): boolean => {
   return tracks.some((t) => t.type === "video" && !t.albumart && !t.image);
-}
+};
