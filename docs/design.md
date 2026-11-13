@@ -116,13 +116,15 @@ test/                 Node上の単体テスト（判定ロジック、タイト
 ### 4.2 yt-dlp経由
 
 1. `ytdlp_metadata`がオンなら、`utils.exec(<yt-dlpのパス>, ["-J", "--no-playlist", "--skip-download", "--no-warnings", "--ignore-no-formats-error", url])`を実行する（約1.8秒）。yt-dlpのパスは、設定の`ytdlp_path`、`/opt/homebrew/bin/yt-dlp`、`/usr/local/bin/yt-dlp`、IINA同梱の`youtube-dl`の順に探す
-2. 結果から、web-scrobblerと同じ順で最初にartistとtrackがそろったものを使う
-   1. `artists`配列と`track`（YouTube Musicなどで入る。`artist`は連結文字列なので使わない）
-   2. チャプター名の分割（チャプターがある動画だけ）
-   3. 概要欄の「Provided to YouTube by …」形式の解析（album付き）
-   4. タイトルの分割（`processYtVideoTitle`相当）。artistが取れなければ、チャンネル名から「 - Topic」などを除いたもの
+2. 結果から、次の順で最初にartistとtrackがそろったものを使う（`src/main/youtube.ts`）
+   1. `artists`配列の**先頭**と`track`（YouTube Musicなどで入る）。`artist`は連結文字列なので使わない。2番目以降は作曲者などのクレジットで（実機では`["YOASOBI", "Ayase"]`）、連結するとLast.fmでは別のアーティストになるため使わない
+   2. 概要欄の「Provided to YouTube by …」形式の解析（album付き。3つ目以降のアーティストは曲名に`(feat. …)`として付ける）
+   3. タイトルの分割（web-scrobblerの`processYtVideoTitle`を移植）。artistが取れなければ、チャンネル名から「 - Topic」などを除いたもの。web-scrobblerと同じく、音楽以外の動画も「チャンネル名 - タイトル」として送られる。避けたい場合は`scrobble_ytdlp`をオフにする
+   - web-scrobblerにあるチャプター名からの取得は、チャプター単位のscrobbleに対応しないので使わない
 3. `title`が`youtube video #<id>`で他の項目がすべて`null`の結果は捨てる
-4. yt-dlpが使えないか失敗したら、`media-title`を4.2.2.4と同じ方法で分割する
+4. yt-dlpが使えないか失敗したら（`ytdlp_metadata`がオフのときも）、`media-title`（動画タイトル）を同じ方法で分割する。チャンネル名がないので、タイトルにartistがなければ送らない
+   - yt-dlpの結果は再生開始の2秒ほど後に届く。再生時間はファイル読み込み後の最初の`mpv.playback-restart`から数え、届くまでの分も記録の時刻に含める
+   - yt-dlpの実行は30秒で打ち切る。`scrobble_ytdlp`がオフのときは実行しない
 5. 長さは`duration`プロパティを使い、取れなければyt-dlpの`duration`を使う
 
 チャプター単位のscrobble（1本の動画に複数曲が入っている場合）は初版では対応しない。

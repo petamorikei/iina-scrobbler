@@ -97,10 +97,14 @@ test("video files need real tags", () => {
   assert.equal(tagged.ok, true);
 });
 
-test("yt-dlp sources are not scrobbled until yt-dlp metadata exists (step 5)", () => {
-  assert.equal(buildTrack(meta({ source: "ytdlp", mediaTitle: "Artist - Song (Official Video)" })).ok, false);
-  // ...unless the stream itself carries real tags
-  assert.equal(buildTrack(meta({ source: "ytdlp", tags: { artist: "A", title: "T" } })).ok, true);
+test("yt-dlp sources: yt-dlp metadata first, then the video title; mpv's duration wins", () => {
+  const withInfo = buildTrack(meta({ source: "ytdlp", duration: 258.8, ytdlp: { artists: ["A"], track: "T", duration: 259 } }));
+  assert.deepEqual(withInfo.ok && [withInfo.from, withInfo.track.artist, withInfo.track.duration], ["ytdlp-music", "A", 258.8]);
+  const titleOnly = buildTrack(meta({ source: "ytdlp", mediaTitle: "Artist - Song (Official Video)", ytdlp: null }));
+  assert.deepEqual(titleOnly.ok && [titleOnly.from, titleOnly.track.artist], ["title", "Artist"]);
+  assert.equal(buildTrack(meta({ source: "ytdlp", mediaTitle: "Just a title", ytdlp: null })).ok, false);
+  // real tags in the stream win
+  assert.equal(buildTrack(meta({ source: "ytdlp", tags: { artist: "A", title: "T" } })).ok && "tags", "tags");
 });
 
 // ---- threshold ----

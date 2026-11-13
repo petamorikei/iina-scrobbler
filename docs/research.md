@@ -370,6 +370,11 @@ web-scrobblerのYouTube connector（`src/connectors/youtube.ts`）は、次の�
   - timestampが未来すぎる場合のコードは`4`だと思っていたが、実際には`1`が返った。コードの意味に頼らず、`"0"`以外は「無視された」として扱えばよい
 - 通信の失敗と再送の間隔（1分から倍々で最大1時間）は、単体テストだけで確かめた（実機でネットワークを止めて試してはいない）
 
+### 8.5.6 yt-dlpによる曲情報と再生元の切り替えの実機確認（2026-11-13）
+
+- Online Media経由でYouTubeの音楽動画（`mJ1N7-HyH1A`）を再生すると、プラグインが`/opt/homebrew/bin/yt-dlp`を実行し、2.0秒で`artists: ["YOASOBI", "Ayase"]`、`track: "夜に駆ける"`を得た。再生が始まった後に届いても、その再生のセッションとして数えられた（送信は未連携にして止めた）
+- `scrobble_ytdlp`と`scrobble_local`をオフにすると、それぞれ「turned off for this source」となり、yt-dlpも実行されなかった
+
 ### 8.6 未確認
 
 - ICYストリームで曲が変わったときに、`icy-title`の更新を確実に検知できるか（ネットラジオの曲ごとのscrobbleは初版では対応しないので、後回し）

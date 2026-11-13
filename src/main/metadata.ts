@@ -1,8 +1,8 @@
-// Building a Track for local files and plain network media (docs/design.md §4.1).
-// yt-dlp sources are handled in step 5; until then they fall back to the title split.
+// Building a Track from what the player knows (docs/design.md §4).
 import type { Track } from "../services/types.ts";
 import type { Source } from "../shared/messages.ts";
 import { clean, parseFileName, stripExtension, stripTrackNumber } from "./title-parser.ts";
+import { trackFromVideoTitle, trackFromYtdlp, type YtdlpInfo } from "./youtube.ts";
 
 export interface MetadataInput {
   source: Source;
@@ -15,27 +15,31 @@ export interface MetadataInput {
   /** The file has a real video track. */
   isVideo: boolean;
   duration?: number;
+  /** yt-dlp metadata for yt-dlp sources: an object, or null when unavailable / turned off. */
+  ytdlp?: YtdlpInfo | null;
 }
 
 export type MetadataResult =
-  | { ok: true; track: Track; from: "tags" | "filename" | "title" }
-  | { ok: false; reason: string };
+  | { ok: true; track: Track; from: string }
+  | { ok: false; reason: string; live?: boolean };
 
 export function buildTrack(input: MetadataInput): MetadataResult {
   const tagArtist = clean(input.tags.artist);
   const tagTitle = clean(input.tags.title);
+  const duration = input.duration && input.duration > 0 ? input.duration : undefined;
   const extra = {
     album: clean(input.tags.album) || undefined,
     albumArtist: clean(input.tags.albumArtist) || undefined,
-    duration: input.duration && input.duration > 0 ? input.duration : undefined,
+    duration,
   };
 
   if (tagArtist && tagTitle) return { ok: true, track: { artist: tagArtist, track: tagTitle, ...extra }, from: "tags" };
 
   if (input.source === "ytdlp") {
-    // Not yet: splitting an arbitrary video title on ":" / "|" / "-" would scrobble
-    // ordinary videos as music. yt-dlp metadata (design §4.2) comes in step 5.
-    return { ok: false, reason: "yt-dlp sources are not supported yet" };
+    const r = input.ytdlp ? trackFromYtdlp(input.ytdlp) : trackFromVideoTitle(clean(input.mediaTitle));
+    if (!r.ok) return r;
+    // mpv's duration is what is actually playing; yt-dlp's is the fallback.
+    return { ok: true, track: { ...r.track, duration: duration ?? r.track.duration }, from: r.from };
   }
 
   // Local / network files without full tags. Video files are only scrobbled with real
