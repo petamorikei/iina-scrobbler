@@ -1,6 +1,6 @@
 {
   "name": "iina-scrobbler",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "IINA plugin that scrobbles what you play to Last.fm",
   "license": "MIT",

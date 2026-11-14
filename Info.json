@@ -1,14 +1,14 @@
 {
   "name": "Scrobbler",
   "identifier": "io.github.petamorikei.iina-scrobbler",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Scrobble what you play in IINA to Last.fm",
   "author": {
     "name": "petamorikei",
     "url": "https://github.com/petamorikei"
   },
   "ghRepo": "petamorikei/iina-scrobbler",
-  "ghVersion": 1,
+  "ghVersion": 2,
   "entry": "dist/main.js",
   "globalEntry": "dist/global.js",
   "permissions": ["network-request", "show-osd", "file-system"],
