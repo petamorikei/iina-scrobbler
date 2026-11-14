@@ -102,6 +102,8 @@ export const stripTopicSuffix = (channel: string): string => {
 export interface YtdlpInfo {
   id?: string | null;
   title?: string | null;
+  /** The title without the date and time yt-dlp appends to live streams ("… 2026-11-14 11:01"). */
+  fulltitle?: string | null;
   track?: string | null;
   artist?: string | null;
   artists?: string[] | null;
@@ -114,8 +116,8 @@ export interface YtdlpInfo {
 }
 
 export type YtTrackResult =
-  | { ok: true; track: Track; from: "ytdlp-music" | "ytdlp-description" | "ytdlp-title" | "title" }
-  | { ok: false; reason: string; live?: boolean };
+  | { ok: true; track: Track; from: "ytdlp-music" | "ytdlp-description" | "ytdlp-title" | "title"; live?: boolean }
+  | { ok: false; reason: string };
 
 /**
  * yt-dlp sometimes answers an unknown video with exit code 0, a title of
@@ -125,9 +127,17 @@ export const isPlaceholderInfo = (info: YtdlpInfo): boolean => {
   return /^youtube video #/i.test(info.title ?? "") && !info.channel && !info.uploader && !info.description;
 };
 
-/** Same order as web-scrobbler, with yt-dlp's own music fields first. */
+/**
+ * Same order as web-scrobbler, with yt-dlp's own music fields first. Live streams are
+ * handled like web-scrobbler does (no special case): parsed as usual and flagged `live`,
+ * so the session ignores the length and scrobbles after 30 s.
+ */
 export const trackFromYtdlp = (info: YtdlpInfo): YtTrackResult => {
-  if (info.is_live) return { ok: false, reason: "live stream", live: true };
+  const r = trackFromYtdlpInfo(info);
+  return r.ok && info.is_live ? { ...r, live: true, track: { ...r.track, duration: undefined } } : r;
+};
+
+const trackFromYtdlpInfo = (info: YtdlpInfo): YtTrackResult => {
   const duration = typeof info.duration === "number" && info.duration > 0 ? info.duration : undefined;
   const album = clean(info.album) || undefined;
 
@@ -152,7 +162,8 @@ export const trackFromYtdlp = (info: YtdlpInfo): YtTrackResult => {
   }
 
   // 3. Video title, with the channel name as the artist when the title has none.
-  const fromTitle = processYtVideoTitle(info.title);
+  // fulltitle: for live streams, title ends with the start time, whose ":" would split it.
+  const fromTitle = processYtVideoTitle(info.fulltitle || info.title);
   const channel = stripTopicSuffix(info.channel || info.uploader || "");
   const artist = fromTitle.artist || channel;
   if (artist && fromTitle.track) {

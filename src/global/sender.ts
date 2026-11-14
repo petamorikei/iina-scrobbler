@@ -1,7 +1,7 @@
 // Sends queued scrobbles in batches and retries with backoff (docs/design.md §7).
 // Clock and timers are injected so the logic can be tested on Node.
 import type { Scrobbler, SendResult } from "../services/types.ts";
-import type { Outcome, ScrobbleQueue } from "./queue.ts";
+import type { Outcome, QueueItem, ScrobbleQueue } from "./queue.ts";
 
 export const RETRY_MIN_MS = 60_000;
 export const RETRY_MAX_MS = 60 * 60_000;
@@ -15,6 +15,11 @@ export interface SenderDeps {
   onAuthError(detail: string): void;
   /** Queue size may have changed (to refresh the menu). */
   onQueueChange(): void;
+  /**
+   * true: only scrobble tracks the service recognizes (web-scrobbler's default); items that
+   * could not be checked when played are looked up before sending. false: send everything.
+   */
+  requireRecognition(): boolean;
 }
 
 export class Sender {
@@ -71,12 +76,18 @@ export class Sender {
     if (expired.length) this.deps.log.warn(`dropped ${expired.length} queued scrobble(s) older than 14 days`);
 
     while (this.service.session) {
-      const batch = this.queue
+      const candidates = this.queue
         .load()
         .filter((i) => i.service === this.service.id)
         .slice(0, this.service.maxBatch);
-      if (batch.length === 0) {
+      if (candidates.length === 0) {
         this.retryDelay = 0;
+        return;
+      }
+      const { batch, pending } = await this.verify(candidates);
+      if (batch.length === 0) {
+        this.deps.onQueueChange();
+        if (pending) this.scheduleRetry("could not check queued tracks with the service");
         return;
       }
       const results = await this.service.scrobble(batch.map((i) => i.entry));
@@ -118,12 +129,44 @@ export class Sender {
         if (err.code !== undefined) this.deps.onAuthError(describe(err));
         return;
       }
-      if (retry) {
-        this.scheduleRetry(outcome.keep[0]?.error ?? "");
+      if (retry || pending) {
+        this.scheduleRetry(outcome.keep[0]?.error ?? "could not check queued tracks with the service");
         return;
       }
       this.retryDelay = 0;
     }
+  }
+
+  /**
+   * Looks up items that could not be checked when they were played (verified === false).
+   * Not found → removed (web-scrobbler's "recognized tracks only"). No answer → kept for a
+   * later retry and left out of this batch. Items from v0.1.0 (no flag) are sent as is.
+   * Lookups run one at a time to stay clear of the rate limit.
+   */
+  private async verify(items: QueueItem[]): Promise<{ batch: QueueItem[]; pending: boolean }> {
+    const toCheck = items.filter((i) => i.verified === false);
+    if (toCheck.length === 0 || !this.service.lookup || !this.deps.requireRecognition()) {
+      return { batch: items, pending: false };
+    }
+    const outcome: Outcome = { remove: [], keep: [], verified: [] };
+    const leaveOut = new Set<string>();
+    let pending = false;
+    for (const item of toCheck) {
+      const what = `${item.entry.artist} - ${item.entry.track}`;
+      const r = await this.service.lookup(item.entry);
+      if (r === "found") {
+        outcome.verified?.push(item.id);
+      } else if (r === "not-found") {
+        outcome.remove.push(item.id);
+        leaveOut.add(item.id);
+        this.deps.log.info(`not scrobbled: ${this.service.displayName} does not know ${what}`);
+      } else {
+        pending = true;
+        leaveOut.add(item.id);
+      }
+    }
+    this.queue.apply(outcome);
+    return { batch: items.filter((i) => !leaveOut.has(i.id)), pending };
   }
 
   private scheduleRetry(reason: string): void {

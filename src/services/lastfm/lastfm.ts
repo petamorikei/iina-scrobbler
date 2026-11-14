@@ -1,7 +1,7 @@
 // Last.fm (AudioScrobbler 2.0 API) scrobbler.
 // Verified on a real IINA: docs/research.md §8.5, §8.5.1.
 import type { HttpFn, HttpMethod } from "../http.ts";
-import type { AuthPoll, PendingAuth, ScrobbleEntry, Scrobbler, SendResult, Track } from "../types.ts";
+import type { AuthPoll, LookupResult, PendingAuth, ScrobbleEntry, Scrobbler, SendResult, Track } from "../types.ts";
 import { buildParams, type Credentials } from "./signature.ts";
 
 export const LASTFM_API_URL = "https://ws.audioscrobbler.com/2.0/";
@@ -67,6 +67,25 @@ export const classifyFailure = (error: Extract<CallResult, { ok: false }>["error
   }
 };
 
+/**
+ * track.getInfo answers an unknown track with error 6 and a "Track not found" message.
+ * Error 6 also means "Invalid parameters" (a missing api_key gives it too), so only the
+ * message identifies a not-found track; anything else is "unknown" and never drops a track.
+ */
+const TRACK_NOT_FOUND = /track not found/i;
+
+export const classifyLookup = (r: CallResult): LookupResult => {
+  if (r.ok) return isRecord(r.data.track) ? "found" : "unknown";
+  if (
+    r.error.kind === "api" &&
+    r.error.code === LastFmError.InvalidParameters &&
+    TRACK_NOT_FOUND.test(r.error.message)
+  ) {
+    return "not-found";
+  }
+  return "unknown";
+};
+
 /** Reads `ignoredMessage` from a nowplaying / scrobble item. */
 export const classifyItem = (item: unknown): SendResult => {
   const ignored = isRecord(item) ? item.ignoredMessage : undefined;
@@ -129,6 +148,20 @@ export class LastFm implements Scrobbler {
     if (r.error.kind === "api" && r.error.code === LastFmError.UnauthorizedToken) return { status: "waiting" };
     const retryable = r.error.kind === "network" || classifyFailure(r.error).status === "retry";
     return { status: "failed", message: describe(r.error), retryable };
+  }
+
+  /**
+   * Whether Last.fm knows the track (web-scrobbler's "recognized" check). Unsigned GET
+   * with the exact artist / track that would be scrobbled; no autocorrection.
+   */
+  async lookup(t: Track): Promise<LookupResult> {
+    if (!this.creds.apiKey) return "unknown";
+    const r = await this.call(
+      "track.getInfo",
+      { artist: t.artist, track: t.track },
+      { signed: false, httpMethod: "GET" },
+    );
+    return classifyLookup(r);
   }
 
   async nowPlaying(t: Track): Promise<SendResult> {

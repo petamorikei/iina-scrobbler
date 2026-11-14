@@ -4,11 +4,11 @@
 import { LastFm } from "../services/lastfm/lastfm.ts";
 import type { SendResult } from "../services/types.ts";
 import { HAS_LASTFM_CREDENTIALS, LASTFM_API_KEY, LASTFM_API_SECRET } from "../shared/build-config.ts";
+import { iinaHttp } from "../shared/iina-http.ts";
 import { createLogger } from "../shared/log.ts";
 import { decode } from "../shared/messages.ts";
-import { getString, PrefKey, setAndSync } from "../shared/prefs.ts";
+import { getBool, getString, PrefKey, setAndSync } from "../shared/prefs.ts";
 import { AuthController } from "./auth.ts";
-import { iinaHttp } from "./iina-http.ts";
 import { ScrobbleQueue, type Storage } from "./queue.ts";
 import { Sender } from "./sender.ts";
 
@@ -41,6 +41,7 @@ const sender = new Sender(lastfm, queue, {
   log,
   onAuthError: (detail) => disconnect(`session rejected, ${detail}`),
   onQueueChange: () => rebuildMenu(),
+  requireRecognition: () => !getBool(PrefKey.ScrobbleUnrecognized, false),
 });
 
 /** Runs a sender operation without letting a rejection go unnoticed. */
@@ -163,8 +164,11 @@ onMessage("nowplaying", async (raw) => {
 onMessage("scrobble", async (raw) => {
   const msg = decode("scrobble", raw);
   if (!msg) return log.warn("ignored a malformed scrobble message");
-  queue.add(lastfm.id, msg.entry, Date.now());
-  log.info(`queued scrobble: ${msg.entry.artist} - ${msg.entry.track}`);
+  // Messages from v0.1.0 main entries carry no flag: treat them as checked.
+  queue.add(lastfm.id, msg.entry, Date.now(), msg.verified !== false);
+  log.info(
+    `queued scrobble: ${msg.entry.artist} - ${msg.entry.track}${msg.verified === false ? " (not checked yet)" : ""}`,
+  );
   await sender.flush();
 });
 

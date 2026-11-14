@@ -104,9 +104,14 @@ test("trackFromYtdlp: title, with the channel as artist when the title has none"
   assert.deepEqual(vlog.ok && [vlog.track.artist, vlog.track.track], ["Vlogger", "My day in Tokyo"]);
 });
 
-test("trackFromYtdlp: live streams are skipped", () => {
-  const r = trackFromYtdlp({ title: "Artist - Song", channel: "C", is_live: true });
-  assert.deepEqual(r, { ok: false, reason: "live stream", live: true });
+test("trackFromYtdlp: live streams are parsed as usual and flagged live, without a length", () => {
+  const r = trackFromYtdlp({ title: "Artist - Song", channel: "C", is_live: true, duration: 3600 });
+  assert.deepEqual(r, {
+    ok: true,
+    from: "ytdlp-title",
+    live: true,
+    track: { artist: "Artist", track: "Song", duration: undefined },
+  });
 });
 
 test("placeholder results for unknown videos are recognised", () => {
@@ -120,4 +125,18 @@ test("placeholder results for unknown videos are recognised", () => {
 test("trackFromVideoTitle needs an artist in the title", () => {
   assert.equal(trackFromVideoTitle("Artist - Song").ok, true);
   assert.equal(trackFromVideoTitle("Song only").ok, false);
+});
+
+test("trackFromYtdlp: live titles use fulltitle, without the start time yt-dlp appends", () => {
+  const r = trackFromYtdlp({
+    title: "christmas lofi radio 🎄 cozy ambience to relax to 2026-11-14 11:01",
+    fulltitle: "christmas lofi radio 🎄 cozy ambience to relax to",
+    channel: "Lofi Girl",
+    is_live: true,
+  });
+  assert.deepEqual(r.ok && [r.track.artist, r.track.track, r.live], [
+    "Lofi Girl",
+    "christmas lofi radio 🎄 cozy ambience to relax to",
+    true,
+  ]);
 });

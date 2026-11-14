@@ -43,6 +43,13 @@ export type AuthPoll =
   | { status: "waiting" }
   | { status: "failed"; message: string; retryable: boolean };
 
+/**
+ * Whether the service knows a track (web-scrobbler's "recognized" check).
+ * - found / not-found: a definite answer
+ * - unknown: no answer (offline, key or rate-limit problems...); never a reason to drop
+ */
+export type LookupResult = "found" | "not-found" | "unknown";
+
 export interface Scrobbler {
   readonly id: string;
   readonly displayName: string;
@@ -54,4 +61,6 @@ export interface Scrobbler {
   /** Sends up to `maxBatch` entries; returns one result per entry, in order. */
   scrobble(entries: ScrobbleEntry[]): Promise<SendResult[]>;
   readonly maxBatch: number;
+  /** Optional track lookup. Services without one treat every track as found. */
+  lookup?(track: Track): Promise<LookupResult>;
 }

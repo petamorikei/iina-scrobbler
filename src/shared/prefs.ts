@@ -7,6 +7,8 @@ export const PrefKey = {
   ScrobbleLocal: "scrobble_local",
   ScrobbleYtdlp: "scrobble_ytdlp",
   ScrobbleNetwork: "scrobble_network",
+  /** Scrobble tracks the service does not know (web-scrobbler's "Force track recognition"). */
+  ScrobbleUnrecognized: "scrobble_unrecognized",
   YtdlpMetadata: "ytdlp_metadata",
   YtdlpPath: "ytdlp_path",
   ShowOsd: "show_osd",

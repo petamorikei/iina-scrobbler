@@ -7,6 +7,9 @@ files, music videos, and online videos played through yt-dlp (YouTube and others
 - Scrobbles with the same rules as [Web Scrobbler](https://github.com/web-scrobbler/web-scrobbler): tracks shorter
   than 30 seconds are skipped, and a track is scrobbled after half its length or 4 minutes of playback, whichever
   comes first. Paused time and skipped-over parts do not count.
+- Like Web Scrobbler, scrobbles only tracks Last.fm knows (checked with `track.getInfo`); a setting scrobbles
+  everything instead.
+- Live streams and internet radio are scrobbled after 30 seconds, as their length is unknown; radio song by song.
 - Sends "now playing" while a track plays.
 - Scrobbles made while offline or before connecting are kept in a queue and sent later (retrying with backoff, for up
   to 14 days, which is as far back as Last.fm accepts).
@@ -46,7 +49,13 @@ To disconnect, choose **Plugin › Disconnect from Last.fm**.
 | Local video files                                       | the file has artist and title tags (file names are not used, so episodes are not scrobbled)                                                  |
 | Online videos via yt-dlp                                | yt-dlp or the video title yields an artist and a title (as in Web Scrobbler, the channel name is used as the artist when the title has none) |
 | Other network media (direct links to audio/video files) | as for local files                                                                                                                           |
-| Internet radio and live streams                         | never                                                                                                                                        |
+| Live streams (via yt-dlp or a direct link)              | as above, after 30 seconds of playback (the length is unknown)                                                                               |
+| Internet radio (ICY)                                    | each song whose stream title looks like `Artist - Title`, after 30 seconds                                                                   |
+
+In every case, the track is scrobbled only if Last.fm knows the artist and title (Web Scrobbler's default, "Scrobble
+recognized tracks"). This also filters out wrong guesses from file names and video titles. Turn on "Also scrobble
+tracks Last.fm does not know" to scrobble them anyway. If the check cannot run (offline), the track is kept and checked
+again before it is sent.
 
 Each source can be turned off in **IINA › Settings › Plugins › Scrobbler**. Turn off "Online videos played through
 yt-dlp" if you do not want non-music videos to be scrobbled as "channel – title".
@@ -56,6 +65,7 @@ yt-dlp" if you do not want non-music videos to be scrobbled as "channel – titl
 | Setting                                     | Default   | Description                                                                                                                                     |
 | ------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | Local files / Online videos / Other network | on        | Which sources are scrobbled                                                                                                                     |
+| Also scrobble tracks Last.fm does not know  | off       | Skip the Last.fm check and scrobble every track (Web Scrobbler's "Force track recognition")                                                     |
 | Run yt-dlp to read artist, track and album  | on        | Online Media only passes the video title; with this on the plugin runs yt-dlp once per video (about 2 seconds)                                  |
 | yt-dlp path                                 | automatic | `/opt/homebrew/bin/yt-dlp`, `/usr/local/bin/yt-dlp`, then the copy bundled with IINA                                                            |
 | Show a message on screen                    | on        | On-screen message when a track is scrobbled                                                                                                     |
@@ -72,7 +82,7 @@ yt-dlp" if you do not want non-music videos to be scrobbled as "channel – titl
 ## Known limitations
 
 - Scrobbling per chapter (several songs in one video) is not supported.
-- Internet radio is not scrobbled per song yet.
+- Internet radio song titles change when the song enters the buffer, a few seconds before it is heard.
 - If two IINA processes run at the same time, a queued scrobble can occasionally be sent twice.
 - The plugin's menus and messages are in English only.
 

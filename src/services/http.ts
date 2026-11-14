@@ -1,5 +1,5 @@
 // Minimal HTTP abstraction so service code stays testable outside IINA.
-// The IINA implementation lives in src/global/iina-http.ts.
+// The IINA implementation lives in src/shared/iina-http.ts.
 
 export type HttpMethod = "GET" | "POST";
 

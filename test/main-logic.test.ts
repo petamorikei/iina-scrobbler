@@ -134,13 +134,13 @@ test("yt-dlp sources: yt-dlp metadata first, then the video title; mpv's duratio
 
 // ---- threshold ----
 
-test("scrobbleThreshold follows web-scrobbler", () => {
-  assert.equal(scrobbleThreshold(29, "local"), null);
-  assert.equal(scrobbleThreshold(40, "local"), 20);
-  assert.equal(scrobbleThreshold(600, "local"), 240);
-  assert.equal(scrobbleThreshold(undefined, "local"), 30);
-  assert.equal(scrobbleThreshold(undefined, "network"), null);
-  assert.equal(scrobbleThreshold(0, "ytdlp"), null);
+test("scrobbleThreshold follows web-scrobbler (unknown length: 30 s for every source)", () => {
+  assert.equal(scrobbleThreshold(29), null);
+  assert.equal(scrobbleThreshold(40), 20);
+  assert.equal(scrobbleThreshold(600), 240);
+  assert.equal(scrobbleThreshold(undefined), 30);
+  assert.equal(scrobbleThreshold(0), 30);
+  assert.equal(scrobbleThreshold(Number.POSITIVE_INFINITY), 30);
 });
 
 // ---- playback session ----
@@ -290,20 +290,77 @@ test("seeking back to the start without loop-file is not a new play", () => {
   ]);
 });
 
-test("network media with a growing duration is treated as live and skipped", () => {
+test("network media whose duration keeps growing becomes live and scrobbles at 30 s", () => {
   const s = new PlaybackSession(T, "network");
   s.onPlaybackRestart(0);
-  const actions = run(s, 0, 10, (i) => ({ duration: 40 + i * 5 }));
-  assert.equal(actions[actions.length - 1]?.type, "skip");
-  assert.equal(
-    actions.some((a) => a.type === "scrobble"),
-    false,
+  // a stream: the reported duration (buffered part) grows every second
+  const actions = run(s, 0, 40, (i) => ({ duration: 10 + i * 1.2 }));
+  assert.deepEqual(
+    actions.filter((a) => a.type !== "note"),
+    [
+      { at: 5, type: "nowplaying" },
+      { at: 30, type: "scrobble" },
+    ],
+  );
+  assert.equal(s.isLive, true);
+});
+
+test("a VBR file whose estimated length shifts a few times is not live", () => {
+  const s = new PlaybackSession(T, "network");
+  s.onPlaybackRestart(0);
+  const actions = run(s, 0, 120, (i) => ({ duration: i < 3 ? 190 + i * 3 : 200 }));
+  assert.equal(s.isLive, false);
+  assert.deepEqual(
+    actions.filter((a) => a.type === "scrobble").map((a) => a.at),
+    [100],
   );
 });
 
-test("network media waits for the duration before nowplaying", () => {
-  const s = new PlaybackSession(T, "network");
+test("live sessions ignore the reported duration and never skip as too short", () => {
+  const s = new PlaybackSession(T, "ytdlp", { live: true });
   s.onPlaybackRestart(0);
-  const actions = run(s, 0, 5, (i) => ({ duration: i < 3 ? null : 300 }));
-  assert.deepEqual(actions, [{ at: 3, type: "nowplaying" }]);
+  assert.deepEqual(
+    run(s, 0, 60, () => ({ duration: 5 })),
+    [
+      { at: 0, type: "nowplaying" },
+      { at: 30, type: "scrobble" },
+    ],
+  );
+});
+
+test("live sessions do not treat a position jump to the start as a loop", () => {
+  const s = new PlaybackSession(T, "ytdlp", { live: true });
+  s.onPlaybackRestart(0);
+  const actions = run(s, 0, 60, (i) => ({ duration: 20, position: i % 20, loopFile: true }));
+  assert.deepEqual(
+    actions.map((a) => a.type),
+    ["nowplaying", "scrobble"],
+  );
+});
+
+test("alreadyScrobbled sessions send nowplaying but never scrobble", () => {
+  const s = new PlaybackSession(T, "network", { live: true, alreadyScrobbled: true });
+  s.onPlaybackRestart(0);
+  assert.deepEqual(run(s, 0, 60), [{ at: 0, type: "nowplaying" }]);
+});
+
+test("network media without a known length uses 30 s, then the real length once known", () => {
+  const unknown = new PlaybackSession(T, "network");
+  unknown.onPlaybackRestart(0);
+  assert.deepEqual(
+    run(unknown, 0, 40, () => ({ duration: null })),
+    [
+      { at: 0, type: "nowplaying" },
+      { at: 30, type: "scrobble" },
+    ],
+  );
+  const late = new PlaybackSession(T, "network");
+  late.onPlaybackRestart(0);
+  assert.deepEqual(
+    run(late, 0, 120, (i) => ({ duration: i < 3 ? null : 200 })),
+    [
+      { at: 0, type: "nowplaying" },
+      { at: 100, type: "scrobble" },
+    ],
+  );
 });

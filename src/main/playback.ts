@@ -1,15 +1,15 @@
-// Per-file playback session: counts played time and decides when to send nowplaying
+// Per-track playback session: counts played time and decides when to send nowplaying
 // and scrobble (docs/design.md §5). Pure: the caller feeds it time and player state.
 
 import type { Track } from "../services/types.ts";
 import type { Source } from "../shared/messages.ts";
 
-/** web-scrobbler's rule: skip < 30 s, scrobble at min(50 %, 4 min); 30 s if the length is unknown. */
-export const scrobbleThreshold = (duration: number | undefined, source: Source): number | null => {
-  if (!duration || !Number.isFinite(duration) || duration <= 0) {
-    // Unknown length: a local file is still a file; a stream may be live (D3).
-    return source === "local" ? 30 : null;
-  }
+/**
+ * web-scrobbler's rule (util.getSecondsToScrobble): skip < 30 s, scrobble at
+ * min(50 %, 4 min); 30 s if the length is unknown (live streams, radio), for every source.
+ */
+export const scrobbleThreshold = (duration: number | undefined): number | null => {
+  if (!duration || !Number.isFinite(duration) || duration <= 0) return 30;
   if (duration < 30) return null;
   return Math.min(Math.round(duration / 2), 240);
 };
@@ -30,7 +30,19 @@ export interface PlayerSample {
 export type SessionAction =
   | { type: "nowplaying"; track: Track }
   | { type: "scrobble"; track: Track; timestamp: number }
-  | { type: "skip"; reason: string };
+  | { type: "skip"; reason: string }
+  /** For logs only. */
+  | { type: "note"; message: string };
+
+export interface SessionOptions {
+  /**
+   * A live stream or radio: the duration mpv reports is only the buffered part, so it
+   * is ignored (unknown length → 30 s) and loop wraps are not detected.
+   */
+  live?: boolean;
+  /** Count and send nowplaying, but never scrobble (a radio song already scrobbled). */
+  alreadyScrobbled?: boolean;
+}
 
 /** Longest gap counted between two ticks when the playback position is unknown. */
 const MAX_TICK_GAP_MS = 2_000;
@@ -40,8 +52,17 @@ const POSITION_TOLERANCE = 0.25;
 const WRAP_END_MARGIN = 3;
 /** ...and the new position is within this many seconds of the start. */
 const WRAP_START_MARGIN = 3;
-/** Network streams whose duration keeps changing are live (radio, live streams). */
-const LIVE_DURATION_CHANGES = 3;
+/**
+ * A network stream whose reported duration grows this many times (by more than 0.5 s
+ * each) is live: radio and live streams grow every second, while a VBR file's estimated
+ * length only shifts once or twice.
+ */
+const LIVE_DURATION_GROWTHS = 5;
+/**
+ * Network media is only judged too short once its duration has held still this many
+ * ticks: right after start, a stream reports just the buffered part (e.g. 0.65 s).
+ */
+const STABLE_DURATION_TICKS = 3;
 
 export class PlaybackSession {
   readonly track: Track;
@@ -53,19 +74,27 @@ export class PlaybackSession {
   private lastPosition: number | null = null;
   private lastPlaying = false;
   private lastDuration: number | null = null;
-  private durationChanges = 0;
+  private durationGrowths = 0;
+  private stableDurationTicks = 0;
+  private live: boolean;
   private nowPlayingSent = false;
-  private scrobbled = false;
+  private scrobbled: boolean;
   private skipped = false;
 
-  constructor(track: Track, source: Source) {
+  constructor(track: Track, source: Source, options: SessionOptions = {}) {
     this.track = track;
     this.source = source;
+    this.live = options.live === true;
+    this.scrobbled = options.alreadyScrobbled === true;
   }
 
   /** mpv.playback-restart: the first one marks the start of playback. */
   onPlaybackRestart(now: number): void {
     if (this.startedAt === null) this.startedAt = now;
+  }
+
+  get isLive(): boolean {
+    return this.live;
   }
 
   /** Called about once a second. Returns what to send now. */
@@ -75,11 +104,12 @@ export class PlaybackSession {
     this.lastTickAt = now;
     if (this.startedAt === null || this.skipped) return actions;
 
-    const duration = s.duration && s.duration > 0 ? s.duration : null;
-    if (this.detectLive(duration)) {
-      this.skipped = true;
-      return [{ type: "skip", reason: "live stream (duration keeps changing)" }];
+    const reported = s.duration && s.duration > 0 ? s.duration : null;
+    if (!this.live && this.detectGrowingDuration(reported)) {
+      this.live = true;
+      actions.push({ type: "note", message: "live stream (duration keeps growing): length ignored, 30 s rule" });
     }
+    const duration = this.live ? null : reported;
 
     const playing = !s.paused && !s.idle;
     const wasPlaying = this.lastPlaying;
@@ -95,13 +125,11 @@ export class PlaybackSession {
     }
     this.lastPosition = s.position;
 
-    const threshold = scrobbleThreshold(duration ?? undefined, this.source);
+    const threshold = scrobbleThreshold(duration ?? undefined);
     if (threshold === null) {
-      // Wait until the length is known for network media; give up when it is too short.
-      if (duration !== null) {
-        this.skipped = true;
-        actions.push({ type: "skip", reason: `too short (${Math.round(duration)} s)` });
-      }
+      if (this.source !== "local" && this.stableDurationTicks < STABLE_DURATION_TICKS) return actions;
+      this.skipped = true;
+      actions.push({ type: "skip", reason: `too short (${Math.round(duration ?? 0)} s)` });
       return actions;
     }
 
@@ -121,12 +149,16 @@ export class PlaybackSession {
     return this.played;
   }
 
-  /** One-line state for logs when the file ends. */
+  get hasScrobbled(): boolean {
+    return this.scrobbled;
+  }
+
+  /** One-line state for logs when the track ends. */
   describe(): string {
-    const d = this.lastDuration ?? undefined;
+    const d = this.live ? undefined : (this.lastDuration ?? undefined);
     return (
-      `played ${this.played.toFixed(1)} s, duration ${d === undefined ? "?" : d.toFixed(1)} s, ` +
-      `threshold ${scrobbleThreshold(d, this.source) ?? "-"}, started ${this.startedAt !== null}, ` +
+      `played ${this.played.toFixed(1)} s, duration ${d === undefined ? "?" : d.toFixed(1)} s${this.live ? " (live)" : ""}, ` +
+      `threshold ${scrobbleThreshold(d) ?? "-"}, started ${this.startedAt !== null}, ` +
       `nowplaying ${this.nowPlayingSent}, scrobbled ${this.scrobbled}, skipped ${this.skipped}`
     );
   }
@@ -149,15 +181,20 @@ export class PlaybackSession {
   }
 
   private detectLoopWrap(s: PlayerSample, duration: number | null): boolean {
-    if (!s.loopFile || duration === null || s.position === null || this.lastPosition === null) return false;
+    if (this.live || !s.loopFile || duration === null || s.position === null || this.lastPosition === null) {
+      return false;
+    }
     return this.lastPosition >= duration - WRAP_END_MARGIN && s.position < WRAP_START_MARGIN;
   }
 
-  private detectLive(duration: number | null): boolean {
-    const changed = duration !== null && this.lastDuration !== null && Math.abs(duration - this.lastDuration) > 0.5;
+  /** Network media only: counts how often the reported duration grew. */
+  private detectGrowingDuration(duration: number | null): boolean {
+    const grew = duration !== null && this.lastDuration !== null && duration - this.lastDuration > 0.5;
+    const same = duration !== null && this.lastDuration !== null && Math.abs(duration - this.lastDuration) <= 0.5;
+    this.stableDurationTicks = same ? this.stableDurationTicks + 1 : 0;
     this.lastDuration = duration;
     if (this.source === "local") return false;
-    if (changed) this.durationChanges++;
-    return this.durationChanges >= LIVE_DURATION_CHANGES;
+    if (grew) this.durationGrowths++;
+    return this.durationGrowths >= LIVE_DURATION_GROWTHS;
   }
 }

@@ -15,6 +15,12 @@ export interface QueueItem {
   queuedAt: number;
   attempts: number;
   lastError?: string;
+  /**
+   * true: recognized by the service (or sent regardless). false: not checked yet (the
+   * check failed when the track was played); checked before sending. Missing in queues
+   * written by v0.1.0: sent as is.
+   */
+  verified?: boolean;
 }
 
 export interface Storage {
@@ -77,6 +83,8 @@ export interface Outcome {
   remove: string[];
   /** Keep and remember the failure. */
   keep: { id: string; error: string }[];
+  /** Mark as recognized by the service. */
+  verified?: string[];
 }
 
 export class ScrobbleQueue {
@@ -99,8 +107,8 @@ export class ScrobbleQueue {
     return items.sort((a, b) => a.entry.timestamp - b.entry.timestamp);
   }
 
-  add(service: string, entry: ScrobbleEntry, now: number): QueueItem {
-    const item: QueueItem = { id: newId(now), service, entry, queuedAt: now, attempts: 0 };
+  add(service: string, entry: ScrobbleEntry, now: number, verified = true): QueueItem {
+    const item: QueueItem = { id: newId(now), service, entry, queuedAt: now, attempts: 0, verified };
     this.update((items) => {
       items.push(item);
       // Keep the newest MAX_ITEMS by playback time.
@@ -124,9 +132,11 @@ export class ScrobbleQueue {
   apply(outcome: Outcome): void {
     const remove = new Set(outcome.remove);
     const errors = new Map(outcome.keep.map((k) => [k.id, k.error]));
+    const verified = new Set(outcome.verified ?? []);
     this.update((items) =>
       items
         .filter((i) => !remove.has(i.id))
+        .map((i) => (verified.has(i.id) ? { ...i, verified: true } : i))
         .map((i) => (errors.has(i.id) ? { ...i, attempts: i.attempts + 1, lastError: errors.get(i.id) } : i)),
     );
   }

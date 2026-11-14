@@ -211,7 +211,7 @@ return Math.min(Math.round(duration * percent / 100), 240); // percentは既定5
 4. **送信**: `http.post`でform-urlencoded、値はすべて文字列。MD5は純JSで実装する
 5. **エラー**: resolveとrejectの両方で`data.error`を見る。9なら再認証を促す。11/16/29とネットワーク障害はキュー（`@data/queue.json`）に残して後で再送（最大50件ずつ）。一括送信の結果は曲ごとに判定する
 6. **認証**: メニュー → `auth.getToken` → `utils.open` → `auth.getSession`をポーリング → session keyを`preferences`（`sync()`）かキーチェーンに保存
-7. **「Last.fmが知らない曲」をscrobbleしない理由にしない**（ローカルファイルには未登録の曲が多い）
+7. **「Last.fmが知らない曲」をscrobbleしない理由にしない**（ローカルファイルには未登録の曲が多い）。2026-11-14、web-scrobblerの既定に合わせて改めた（design.md D5、8.7）
 
 ## 4. 未決定事項
 
@@ -377,11 +377,34 @@ web-scrobblerのYouTube connector（`src/connectors/youtube.ts`）は、次の�
 
 ### 8.6 未確認
 
-- ICYストリームで曲が変わったときに、`icy-title`の更新を確実に検知できるか（ネットラジオの曲ごとのscrobbleは初版では対応しないので、後回し）
+- ICYストリームで曲が変わったとき、新しい曲として数え直せるか（1曲目の取得とscrobbleは8.8で確認済み。曲の切り替わりは単体テストだけ）
 - ウィンドウを手で閉じたときのイベントの順序（`stop`のときと同じと推測）
 - mpv内蔵ytdl_hook経由の再生で、`stream-open-filename`が置き換わるか
 - ウィンドウが閉じた後のPlayerCore再利用: 閉じた後にIPCで読み込ませたファイルではプローブのイベントが発火せず、`iina-cli`でURLを開くとIINAの2つ目のプロセスが起動した。プロセスごとにglobal entryが1つずつ動き、`@data`を共有することになるので、キューの書き込み競合に注意が必要
 - 遅延した返信でオブジェクトをそのまま送った場合（8.1の切り分け）
+
+### 8.7 web-scrobblerの「送らない」扱い（ソースで確認、2026-11-14）
+
+2026-11-12時点のweb-scrobbler（`72b985b`）のソースで確かめた。design.mdのD3とD5の根拠。
+
+- **アーティストか曲名が空**: その曲は何も送らない。「再生中」も送らない（`core/object/controller/controller.ts`で`Util.isArtistTrackEmpty`なら`reset()`）
+- **長さが不明**: `util/util.ts`の`getSecondsToScrobble`は、長さがない、NaN、無限大のとき`DEFAULT_SCROBBLE_TIME`（30秒）を返す。ライブ配信だけを除く処理はない。YouTubeのコネクタにも、ライブ配信の特別扱いはない（除外の理由は広告、背景のタブ、カテゴリの設定だけ）
+- **Last.fmが知らない曲**: 設定は3つ。既定は「Scrobble recognized or edited tracks」で、`track.getInfo`で見つかった曲か、利用者が手で直した曲だけ送る意図になっている（`core/object/pipeline/metadata.ts`、`core/storage/options.ts`）。ほかに「Force track recognition」（見つからなくても送る）と「Scrobble edited tracks only」がある
+- **ただし既定の判定は実際には働いていない**: 曲が見つからないと`getSongInfo`は例外になり、結果は`[null]`になる。それをまとめる`getInfo`が`reduce(…, {})`で初期値の`{}`を返すので、`songInfo !== null`は常に真になる。Last.fmと連携していれば、どの曲も「知っている」と判定される。2.6の推測が確かめられた
+- **見つかった曲の補正**: `track.getInfo`の結果で、アーティスト名、曲名、長さを置き換える（`INFO_TO_COPY`）
+
+### 8.8 認識の確認、ライブ配信、ネットラジオの実機確認（2026-11-14）
+
+- **`track.getInfo`の応答**（開発用のキーで確認）:
+  - 知っている曲: HTTP 200で`track`が返る。大文字小文字や表記の違いは吸収される（`yoasobi`でも`YOASOBI`、`Keston And Westdal`でも`Keston and Westdal`が返る）
+  - 知らない曲: **HTTP 200**で`{"error":6,"message":"Track not found"}`。テストで送った「Metaflac Artist - Metaflac Title」も、記録はあるが見つからなかった
+  - API keyがない: HTTP 400で`{"error":6,"message":"Invalid parameters - Your request is missing a required parameter"}`。同じerror 6なので、文言で区別する必要がある
+- **ローカルファイル**（送信は止めて確認）: 存在しないアーティストのタグを付けたファイルと、タグのない`12-Track 01 - Intro.mp3`（ファイル名から「Track 01 - Intro」と推測）は、どちらも「Last.fmが知らない」として送らなかった。YOASOBIのタグを付けたファイルは20秒でscrobbleの対象になった
+  - 確認の答えは再生開始の約0.8秒後に届く。最初の版は答えを待つ間に再生開始の時刻を取り逃し、数え始めなかった。答えが届いた時点でファイルの再生開始時刻を読むように直した
+- **ネットラジオ**（SomaFM Groove Salad）: 再生開始の3秒後に`icy-title`から「Chris Coco - Love Made Me Tough」を取り、Last.fmが知っている曲として数え、30秒でscrobbleの対象になった
+- **YouTubeのライブ配信**（「知らなくても送る」をオンにして確認）: yt-dlpが`is_live: true`を返し、長さ（読み込み済みの分で19.9秒、64.9秒…と増える）を無視して、30秒でscrobbleの対象になった
+  - yt-dlpはライブ配信の`title`の末尾に開始日時（`… 2026-11-14 11:01`）を付ける。時刻の`:`が区切りとして使われ、曲名が「01」になった。日時のない`fulltitle`を使うように直し、「Lofi Girl - christmas lofi radio 🎄 cozy ambience to relax to」になった
+  - 終了したライブ配信（`live_status: post_live`）は、IINAで読み込めなかった
 
 ## 参照
 

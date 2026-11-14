@@ -59,12 +59,29 @@
           <label><input type="checkbox" data-pref-key="scrobble_ytdlp" /> Online videos played through yt-dlp (YouTube etc.)</label>
         </div>
         <div>
-          <label><input type="checkbox" data-pref-key="scrobble_network" /> Other network media (direct URLs to audio/video files)</label>
+          <label
+            ><input type="checkbox" data-pref-key="scrobble_network" /> Other network media (direct URLs, internet
+            radio)</label
+          >
         </div>
       </div>
       <p class="pref-help secondary small">
-        Videos from local files are scrobbled only when they have artist and title tags. Internet radio and live
-        streams are never scrobbled. Changes apply from the next file.
+        Videos from local files are scrobbled only when they have artist and title tags. Live streams and internet
+        radio are scrobbled after 30 seconds, since their length is unknown; radio song by song. Changes apply from the
+        next file.
+      </p>
+      <div class="rows" style="margin-top: 8px">
+        <div>
+          <label
+            ><input type="checkbox" data-pref-key="scrobble_unrecognized" /> Also scrobble tracks Last.fm does not
+            know</label
+          >
+        </div>
+      </div>
+      <p class="pref-help secondary small">
+        By default, as in Web Scrobbler, a track is scrobbled only if Last.fm knows its artist and title. This also
+        filters out wrong guesses from file names and video titles. Turn this on to scrobble everything (Web
+        Scrobbler's "Force track recognition").
       </p>
     </div>
 

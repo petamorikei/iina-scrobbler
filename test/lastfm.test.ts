@@ -179,11 +179,62 @@ test("scrobble rejects more than 50 entries", async () => {
 // ---- messages ----
 
 test("messages round-trip as JSON strings and reject malformed input", () => {
-  const raw = encode("scrobble", { entry: { artist: "A", track: "T", timestamp: 1 }, source: "local" });
+  const raw = encode("scrobble", {
+    entry: { artist: "A", track: "T", timestamp: 1 },
+    source: "local",
+    verified: false,
+  });
   assert.equal(typeof raw, "string");
-  assert.deepEqual(decode("scrobble", raw), { entry: { artist: "A", track: "T", timestamp: 1 }, source: "local" });
+  assert.deepEqual(decode("scrobble", raw), {
+    entry: { artist: "A", track: "T", timestamp: 1 },
+    source: "local",
+    verified: false,
+  });
   assert.equal(decode("scrobble", { entry: { artist: "A", track: "T", timestamp: 1 } }), null);
   assert.equal(decode("scrobble", JSON.stringify({ entry: { artist: "A", track: "T" } })), null);
   assert.equal(decode("nowplaying", JSON.stringify({ track: { artist: "", track: "T" } })), null);
   assert.equal(decode("nowplaying", "{"), null);
+});
+
+// ---- lookup (track.getInfo) ----
+
+test("lookup: unsigned GET track.getInfo with the exact artist and track", async () => {
+  const { http, calls } = fake(ok({ track: { name: "夜に駆ける", artist: { name: "YOASOBI" } } }));
+  const r = await new LastFm(http, creds).lookup({ artist: "YOASOBI", track: "夜に駆ける", album: "THE BOOK" });
+  assert.equal(r, "found");
+  const p = calls[0]!.params;
+  assert.equal(calls[0]!.method, "GET");
+  assert.equal(p.method, "track.getInfo");
+  assert.equal(p.artist, "YOASOBI");
+  assert.equal(p.track, "夜に駆ける");
+  assert.equal("api_sig" in p, false);
+  assert.equal("autocorrect" in p, false);
+  assert.equal("album" in p, false);
+});
+
+test("lookup: only 'Track not found' means not-found; everything else is unknown", async () => {
+  const cases: [HttpOutcome, string][] = [
+    [apiError(200, 6, "Track not found"), "not-found"],
+    [apiError(400, 6, "Invalid parameters - Your request is missing a required parameter"), "unknown"],
+    [apiError(403, 10, "Invalid API key"), "unknown"],
+    [apiError(403, 26, "Suspended API key"), "unknown"],
+    [apiError(429, 29, "Rate limit exceeded"), "unknown"],
+    [apiError(503, 11, "Service offline"), "unknown"],
+    [{ kind: "response", statusCode: 502, data: null }, "unknown"],
+    [{ kind: "network", message: "offline" }, "unknown"],
+    [ok({ unexpected: true }), "unknown"],
+  ];
+  for (const [outcome, want] of cases) {
+    assert.equal(
+      await new LastFm(fake(outcome).http, creds).lookup({ artist: "A", track: "T" }),
+      want,
+      JSON.stringify(outcome),
+    );
+  }
+});
+
+test("lookup without an API key (build without credentials) does not call Last.fm", async () => {
+  const { http, calls } = fake();
+  assert.equal(await new LastFm(http, { apiKey: "", apiSecret: "" }).lookup({ artist: "A", track: "T" }), "unknown");
+  assert.equal(calls.length, 0);
 });

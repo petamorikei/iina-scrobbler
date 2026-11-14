@@ -7,7 +7,12 @@ export type Source = "local" | "ytdlp" | "network";
 
 export interface MessageMap {
   nowplaying: { track: Track; source: Source };
-  scrobble: { entry: ScrobbleEntry; source: Source };
+  /**
+   * verified: the track was checked against the service (found), or the user scrobbles
+   * unrecognized tracks anyway. false: the check could not run (offline); the sender
+   * checks again before sending.
+   */
+  scrobble: { entry: ScrobbleEntry; source: Source; verified: boolean };
 }
 
 export type MessageName = keyof MessageMap;

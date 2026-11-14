@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { MAX_AGE_MS, MAX_ITEMS, ScrobbleQueue, type Storage, serializeQueue } from "../src/global/queue.ts";
 import { RETRY_MAX_MS, RETRY_MIN_MS, Sender, type SenderDeps } from "../src/global/sender.ts";
-import type { ScrobbleEntry, Scrobbler, SendResult } from "../src/services/types.ts";
+import type { LookupResult, ScrobbleEntry, Scrobbler, SendResult, Track } from "../src/services/types.ts";
 
 // ---- helpers ----
 
@@ -35,6 +35,13 @@ class FakeService implements Scrobbler {
   calls: string[][] = [];
   /** One responder per call; default: everything ok. */
   responders: ((entries: ScrobbleEntry[]) => SendResult[])[] = [];
+  /** track name → lookup answer (default: found) */
+  known = new Map<string, LookupResult>();
+  lookups: string[] = [];
+  async lookup(t: Track): Promise<LookupResult> {
+    this.lookups.push(t.track);
+    return this.known.get(t.track) ?? "found";
+  }
   async beginAuth(): Promise<never> {
     throw new Error("unused");
   }
@@ -51,7 +58,7 @@ class FakeService implements Scrobbler {
   }
 }
 
-const fakeDeps = () => {
+const fakeDeps = (requireRecognition = true) => {
   const timers: { fn: () => void; ms: number }[] = [];
   const authErrors: string[] = [];
   const deps: SenderDeps = {
@@ -70,6 +77,7 @@ const fakeDeps = () => {
       authErrors.push(d);
     },
     onQueueChange: () => {},
+    requireRecognition: () => requireRecognition,
   };
   return { deps, timers, authErrors };
 };
@@ -281,4 +289,77 @@ test("items older than 14 days are pruned before sending", async () => {
   await new Sender(svc, q, deps).flush();
   assert.equal(svc.calls.length, 0);
   assert.equal(q.count(), 0);
+});
+
+// ---- recognition (web-scrobbler's "scrobble recognized tracks") ----
+
+test("unchecked items are looked up before sending: not found → removed, found → sent", async () => {
+  const { storage } = memoryStorage();
+  const q = new ScrobbleQueue(storage);
+  q.add("lastfm", entry("known"), NOW, false);
+  q.add("lastfm", entry("unknown", 5), NOW, false);
+  q.add("lastfm", entry("checked", 1), NOW, true);
+  const svc = new FakeService();
+  svc.known.set("unknown", "not-found");
+  const { deps } = fakeDeps();
+  await new Sender(svc, q, deps).flush();
+  assert.deepEqual(svc.lookups.sort(), ["known", "unknown"]);
+  assert.deepEqual(svc.calls.flat().sort(), ["checked", "known"]);
+  assert.equal(q.count(), 0);
+});
+
+test("items whose check gets no answer stay queued and are retried later", async () => {
+  const { storage } = memoryStorage();
+  const q = new ScrobbleQueue(storage);
+  q.add("lastfm", entry("offline"), NOW, false);
+  q.add("lastfm", entry("fine", 1), NOW, true);
+  const svc = new FakeService();
+  svc.known.set("offline", "unknown");
+  const { deps, timers } = fakeDeps();
+  await new Sender(svc, q, deps).flush();
+  assert.deepEqual(svc.calls, [["fine"]]);
+  const left = q.load();
+  assert.deepEqual(
+    left.map((i) => [i.entry.track, i.verified]),
+    [["offline", false]],
+  );
+  assert.equal(timers.length, 1);
+});
+
+test("a found item is remembered as verified, so it is not looked up again", async () => {
+  const { storage } = memoryStorage();
+  const q = new ScrobbleQueue(storage);
+  q.add("lastfm", entry("x"), NOW, false);
+  const svc = new FakeService();
+  svc.responders.push((es) => es.map(() => ({ status: "retry" as const })));
+  const { deps } = fakeDeps();
+  const sender = new Sender(svc, q, deps);
+  await sender.flush();
+  assert.equal(q.load()[0]?.verified, true);
+  await sender.retryNow();
+  assert.deepEqual(svc.lookups, ["x"]);
+  assert.equal(q.count(), 0);
+});
+
+test("with 'scrobble unrecognized tracks' on, nothing is looked up", async () => {
+  const { storage } = memoryStorage();
+  const q = new ScrobbleQueue(storage);
+  q.add("lastfm", entry("anything"), NOW, false);
+  const svc = new FakeService();
+  svc.known.set("anything", "not-found");
+  const { deps } = fakeDeps(false);
+  await new Sender(svc, q, deps).flush();
+  assert.equal(svc.lookups.length, 0);
+  assert.deepEqual(svc.calls, [["anything"]]);
+});
+
+test("queues written by v0.1.0 (no verified flag) are sent without a lookup", async () => {
+  const legacy = { id: "old", service: "lastfm", entry: entry("legacy"), queuedAt: NOW, attempts: 0 };
+  const { storage } = memoryStorage(serializeQueue([legacy]));
+  const q = new ScrobbleQueue(storage);
+  const svc = new FakeService();
+  const { deps } = fakeDeps();
+  await new Sender(svc, q, deps).flush();
+  assert.equal(svc.lookups.length, 0);
+  assert.deepEqual(svc.calls, [["legacy"]]);
 });

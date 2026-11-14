@@ -20,6 +20,7 @@
     "scrobble_local": true,
     "scrobble_ytdlp": true,
     "scrobble_network": true,
+    "scrobble_unrecognized": false,
     "ytdlp_metadata": true,
     "ytdlp_path": "",
     "show_osd": true,

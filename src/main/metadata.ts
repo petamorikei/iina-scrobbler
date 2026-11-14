@@ -19,7 +19,7 @@ export interface MetadataInput {
   ytdlp?: YtdlpInfo | null;
 }
 
-export type MetadataResult = { ok: true; track: Track; from: string } | { ok: false; reason: string; live?: boolean };
+export type MetadataResult = { ok: true; track: Track; from: string; live?: boolean } | { ok: false; reason: string };
 
 export const buildTrack = (input: MetadataInput): MetadataResult => {
   const tagArtist = clean(input.tags.artist);
@@ -36,6 +36,7 @@ export const buildTrack = (input: MetadataInput): MetadataResult => {
   if (input.source === "ytdlp") {
     const r = input.ytdlp ? trackFromYtdlp(input.ytdlp) : trackFromVideoTitle(clean(input.mediaTitle));
     if (!r.ok) return r;
+    if (r.live) return r; // the length of a live stream is meaningless
     // mpv's duration is what is actually playing; yt-dlp's is the fallback.
     return { ok: true, track: { ...r.track, duration: duration ?? r.track.duration }, from: r.from };
   }
